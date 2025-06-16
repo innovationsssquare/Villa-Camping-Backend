@@ -11,7 +11,7 @@ const createCategory = async (req, res, next) => {
       return next(new AppErr("Validation failed", 400, errors.array()));
     }
 
-    const { name, description, features, seasonalTrends, popularityScore } = req.body;
+    const { name, description, features, seasonalTrends, popularityScore,image } = req.body;
 
     // Check if category already exists
     const existingCategory = await Category.findOne({ name });
@@ -26,6 +26,7 @@ const createCategory = async (req, res, next) => {
       features,
       seasonalTrends,
       popularityScore,
+      image
     });
 
     // Save category to the database

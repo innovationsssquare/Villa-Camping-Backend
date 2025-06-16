@@ -8,11 +8,9 @@ const CategorySchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    image:String,
     description: String,
-    features: [String],
     seasonalTrends: [{ season: String, demand: String }],
-    popularityScore: { type: Number, default: 0 },
-    icon: String, // optional
     isActive: { type: Boolean, default: true },
     deletedAt: { type: Date, default: null },
   },
