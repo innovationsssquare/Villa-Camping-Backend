@@ -109,7 +109,7 @@ const getSingleCategory = async (req, res, next) => {
 const deleteCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const deletedCategory = await Category.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+    const deletedCategory = await Category.findByIdAndDelete(id);
 
     if (!deletedCategory) {
       return next(new AppErr("Category not found", 404));
@@ -118,7 +118,6 @@ const deleteCategory = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Category deleted successfully",
-      data: deletedCategory,
     });
   } catch (error) {
     console.error(error);
