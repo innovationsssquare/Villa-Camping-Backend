@@ -6,7 +6,6 @@ const {
   getSingleOwner,
   updateOwner,
   deleteOwner,
-  addPropertyToOwner,
   loginOwnerWithFirebase,
 } = require("../Controller/Owner");
 
@@ -32,6 +31,6 @@ OwnerRouter.put("/update/owner/:id", updateOwner);
 OwnerRouter.get("/get/owners", getAllOwners);
 OwnerRouter.get("/get/owner/:id", getSingleOwner);
 OwnerRouter.delete("/delete/owner/:id", deleteOwner);
-OwnerRouter.put("/owner/:ownerId/add-property/:propertyId", addPropertyToOwner);
+// OwnerRouter.put("/owner/:ownerId/add-property/:propertyId", addPropertyToOwner);
 
 module.exports = { OwnerRouter };

@@ -7,18 +7,26 @@ const VillaSchema = new mongoose.Schema(
       ref: "Property",
       required: true,
     },
+    name: {
+      type: String,
+    },
+    location: {
+      addressLine: { type: String },
+      city: { type: String },
+      area: { type: String },
+    },
     bhkType: {
       type: String,
-      enum: ["2BHK", "3BHK", "4BHK"],
-      required: true,
+      enum: ["1BHK", "2BHK", "3BHK", "4BHK"],
+      default: "2BHK",
     },
     maxCapacity: {
       type: Number,
-      required: true,
+      default: 10,
     },
-    pricePerNight: {
+    basePricePerNight: {
       type: Number,
-      required: true,
+      default: 0,
     },
     seasonalPricing: [
       {
@@ -26,6 +34,14 @@ const VillaSchema = new mongoose.Schema(
         price: { type: Number },
       },
     ],
+    extraPersonCharge: {
+      type: Number,
+      default: 1000,
+    },
+    kitchenCharge: {
+      type: Number,
+      default: 1000,
+    },
     bookedDates: [
       {
         checkIn: Date,
@@ -37,9 +53,15 @@ const VillaSchema = new mongoose.Schema(
       enum: ["available", "booked"],
       default: "available",
     },
-    amenities: [String],
+    amenities: [
+      {
+        type: String,
+      },
+    ],
     images: [String],
-    houseRules: [String],
+    houseRules: {
+      type: [String],
+    },
     checkInTime: {
       type: String,
       default: "1 PM",
@@ -59,6 +81,10 @@ const VillaSchema = new mongoose.Schema(
     cancellationPolicy: {
       type: String,
       default: "No refund on cancellations.",
+    },
+    foodOptions: {
+      type: String,
+      default: "Homely made food available on request",
     },
     deletedAt: {
       type: Date,

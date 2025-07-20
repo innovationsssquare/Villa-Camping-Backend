@@ -25,14 +25,6 @@ const PropertySchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
-    basePricePerNight: {
-      type: Number,
-      required: true,
-    },
-    minBookingAmount: {
-      type: Number,
-      required: true,
-    },
     available: {
       type: Boolean,
       default: true,

@@ -1,39 +1,32 @@
 const { validationResult } = require("express-validator");
 const AppErr = require("../Services/AppErr");
 const Owner = require("../Model/Ownerschema");
-const Property = require("../Model/Propertyschema");
 
 // Create owner
 const createOwner = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return next(new AppErr("Validation failed", 400, errors.array()));
-    }
-
+ try {
     const { firebaseUID, name, email, phone, profilePic } = req.body;
 
-    const existingOwner = await Owner.findOne({ email });
-    if (existingOwner) {
-      return next(new AppErr("Email already registered", 400));
+    let owner = await Owner.findOne({ firebaseUID, email });
+
+    if (!owner) {
+      owner = await Owner.create({
+        firebaseUID,
+        name,
+        email,
+        phone,
+        profilePic,
+      });
     }
 
-    const owner = await Owner.create({
-      firebaseUID,
-      name,
-      email,
-      phone,
-      profilePic,
-    });
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "Owner created successfully",
+      message: "Owner logged in or registered",
       data: owner,
     });
   } catch (error) {
     console.error(error);
-    next(new AppErr("Error creating owner", 500));
+    next(new AppErr("Login or registration failed", 500));
   }
 };
 
@@ -135,31 +128,31 @@ const deleteOwner = async (req, res, next) => {
 };
 
 // Add property to owner
-const addPropertyToOwner = async (req, res, next) => {
-  try {
-    const { ownerId, propertyId } = req.params;
+// const addPropertyToOwner = async (req, res, next) => {
+//   try {
+//     const { ownerId, propertyId } = req.params;
 
-    const owner = await Owner.findById(ownerId);
-    if (!owner) return next(new AppErr("Owner not found", 404));
+//     const owner = await Owner.findById(ownerId);
+//     if (!owner) return next(new AppErr("Owner not found", 404));
 
-    const property = await Property.findById(propertyId);
-    if (!property) return next(new AppErr("Property not found", 404));
+//     const property = await Property.findById(propertyId);
+//     if (!property) return next(new AppErr("Property not found", 404));
 
-    if (!owner.properties.includes(propertyId)) {
-      owner.properties.push(propertyId);
-      await owner.save();
-    }
+//     if (!owner.properties.includes(propertyId)) {
+//       owner.properties.push(propertyId);
+//       await owner.save();
+//     }
 
-    res.status(200).json({
-      success: true,
-      message: "Property added to owner",
-      data: owner,
-    });
-  } catch (error) {
-    console.error(error);
-    next(new AppErr("Error adding property to owner", 500));
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Property added to owner",
+//       data: owner,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     next(new AppErr("Error adding property to owner", 500));
+//   }
+// };
 
 module.exports = {
   createOwner,
@@ -167,5 +160,5 @@ module.exports = {
   getSingleOwner,
   updateOwner,
   deleteOwner,
-  addPropertyToOwner,
+  loginOwnerWithFirebase
 };
