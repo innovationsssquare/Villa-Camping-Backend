@@ -25,8 +25,7 @@ const createOwner = async (req, res, next) => {
       data: owner,
     });
   } catch (error) {
-    console.error(error);
-    next(new AppErr("Login or registration failed", 500));
+     next(new AppErr("Login or registration failed", 500));
   }
 };
 
