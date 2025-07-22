@@ -1,10 +1,11 @@
 const admin = require('../Services/firebaseAdmin');
+const AppErr = require('../Services/AppErr'); 
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized - No token' });
+    return next(new AppErr('Unauthorized - No token', 401));
   }
 
   const token = authHeader.split('Bearer ')[1];
@@ -15,7 +16,7 @@ const verifyToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Token verification failed:', error.message);
-    return res.status(403).json({ error: 'Invalid or expired token' });
+    return next(new AppErr('Invalid or expired token', 403));
   }
 };
 
