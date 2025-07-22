@@ -5,7 +5,7 @@ const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new AppErr('Unauthorized - No token', 401));
+    return next(new AppErr('Unauthorized - No token', 500));
   }
 
   const token = authHeader.split('Bearer ')[1];
