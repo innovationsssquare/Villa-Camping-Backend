@@ -9,6 +9,7 @@ const {
   loginOwnerWithFirebase,
 } = require("../Controller/Owner");
 const verifyToken = require("../MiddleWare/Verfiytoken");
+const verifyGoogleToken = require("../MiddleWare/verifyGoogleToken");
 
 const OwnerRouter = express.Router();
 
@@ -25,7 +26,7 @@ OwnerRouter.post(
   "/create/owner",
   body("email").isEmail().withMessage("Valid email is required"),
   body("password").notEmpty().withMessage("Password is required"),
-  verifyToken,
+  verifyGoogleToken,
   createOwner
 );
 
