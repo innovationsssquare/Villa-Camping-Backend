@@ -1,21 +1,40 @@
-const Villa = require("../Model/Villa");
+const Villa = require("../Model/Villaschema");
 const AppErr = require("../Services/AppErr");
 
-// Create a villa
+// Create a Villa
 const createVilla = async (req, res, next) => {
   try {
     const villa = await Villa.create(req.body);
-    res.status(201).json({ success: true, message: "Villa created", data: villa });
+
+    // Push the villa into owner's properties array
+    await Owner.findByIdAndUpdate(
+      villa.owner,
+      {
+        $push: {
+          properties: {
+            refType: "Villa",
+            refId: villa._id
+          }
+        }
+      },
+      { new: true }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Villa created and added to owner's properties",
+      data: villa
+    });
   } catch (err) {
     console.error(err);
     next(new AppErr("Failed to create villa", 500));
   }
 };
 
-// Get all villas
+// Get All Villas (excluding soft-deleted ones)
 const getAllVillas = async (req, res, next) => {
   try {
-    const villas = await Villa.find({ deletedAt: null }).populate("property");
+    const villas = await Villa.find({ deletedAt: null });
     res.status(200).json({ success: true, data: villas });
   } catch (err) {
     console.error(err);
@@ -23,13 +42,13 @@ const getAllVillas = async (req, res, next) => {
   }
 };
 
-// Get villa by ID
+// Get Villa By ID
 const getVillaById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const villa = await Villa.findById(id).populate("property");
+    const villa = await Villa.findOne({ _id: id, deletedAt: null });
 
-    if (!villa || villa.deletedAt) {
+    if (!villa) {
       return next(new AppErr("Villa not found", 404));
     }
 
@@ -40,49 +59,70 @@ const getVillaById = async (req, res, next) => {
   }
 };
 
-// Update villa
+// Update Villa
 const updateVilla = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const updated = await Villa.findByIdAndUpdate(id, req.body, { new: true });
+    const updatedVilla = await Villa.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      req.body,
+      { new: true }
+    );
 
-    if (!updated) {
+    if (!updatedVilla) {
       return next(new AppErr("Villa not found", 404));
     }
 
-    res.status(200).json({ success: true, message: "Villa updated", data: updated });
+    res.status(200).json({
+      success: true,
+      message: "Villa updated successfully",
+      data: updatedVilla,
+    });
   } catch (err) {
     console.error(err);
     next(new AppErr("Failed to update villa", 500));
   }
 };
 
-// Soft delete villa
+// Soft Delete Villa
 const softDeleteVilla = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const deleted = await Villa.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+    const deletedVilla = await Villa.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { deletedAt: new Date() },
+      { new: true }
+    );
 
-    if (!deleted) {
+    if (!deletedVilla) {
       return next(new AppErr("Villa not found", 404));
     }
 
-    res.status(200).json({ success: true, message: "Villa soft deleted", data: deleted });
+    res.status(200).json({
+      success: true,
+      message: "Villa soft deleted",
+      data: deletedVilla,
+    });
   } catch (err) {
     console.error(err);
     next(new AppErr("Failed to delete villa", 500));
   }
 };
 
-// Get all villas by property ID
+// Get Villas by ID (if using propertyId = villaId pattern for now)
 const getVillaByProperty = async (req, res, next) => {
   try {
     const { propertyId } = req.params;
-    const villas = await Villa.find({ property: propertyId, deletedAt: null });
-    res.status(200).json({ success: true, data: villas });
+    const villa = await Villa.findOne({ _id: propertyId, deletedAt: null });
+
+    if (!villa) {
+      return next(new AppErr("Villa not found", 404));
+    }
+
+    res.status(200).json({ success: true, data: villa });
   } catch (err) {
     console.error(err);
-    next(new AppErr("Failed to fetch villas for property", 500));
+    next(new AppErr("Failed to fetch villa", 500));
   }
 };
 

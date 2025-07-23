@@ -23,12 +23,20 @@ const OwnerSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      default: "owner", 
+      default: "owner",
     },
     properties: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Property",
+        refType: {
+          type: String,
+          required: true,
+          enum: ["Villa", "Camping", "Hotel", "Cottage"],
+        },
+        refId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          refPath: "properties.refType",
+        },
       },
     ],
     deletedAt: {
