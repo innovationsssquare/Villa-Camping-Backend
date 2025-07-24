@@ -6,6 +6,7 @@ const {
   getAllCategories,
   getSingleCategory,
   deleteCategory,
+  getCategoryBySlug 
 } = require("../Controller/Category");
 
 const CategoryRouter = express.Router();
@@ -29,6 +30,8 @@ CategoryRouter.get("/get/categories", getAllCategories);
 
 // Get a single category by ID
 CategoryRouter.get("/get/category/:id", getSingleCategory);
+
+CategoryRouter.get("/get/categorybyslug/:slug", getCategoryBySlug);
 
 // Delete a category by ID
 CategoryRouter.delete("/delete/category/:id", deleteCategory);

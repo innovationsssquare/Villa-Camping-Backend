@@ -105,6 +105,22 @@ const getSingleCategory = async (req, res, next) => {
   }
 };
 
+const getCategoryBySlug = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+
+    const category = await Category.findOne({ slug, deletedAt: null });
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 // Delete a category by ID (Soft Delete)
 const deleteCategory = async (req, res, next) => {
   try {
@@ -131,4 +147,5 @@ module.exports = {
   getAllCategories,
   getSingleCategory,
   deleteCategory,
+  getCategoryBySlug
 };
