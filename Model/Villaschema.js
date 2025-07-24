@@ -10,7 +10,7 @@ const VillaSchema = new mongoose.Schema(
 
     category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category", // e.g. Villa, Cottage, Camping, Hotel
+      ref: "Category",
       required: true,
     },
 
@@ -73,6 +73,7 @@ const VillaSchema = new mongoose.Schema(
     amenities: [String],
 
     images: [String],
+    reelVideo: { type: String },
 
     houseRules: [String],
 

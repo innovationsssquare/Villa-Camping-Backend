@@ -1,10 +1,157 @@
 const { validationResult } = require("express-validator");
 const AppErr = require("../Services/AppErr");
 const Owner = require("../Model/Ownerschema");
+const Villa = require("../Model/Villaschema");
+const Hotel = require("../Model/Hotelschema");
+const Cottage = require("../Model/Cottageschema");
+const Camping = require("../Model/Campingschema");
+const Category = require("../Model/Categoryschema");
+
+const getPropertiesByCategorySlug = async (req, res, next) => {
+  // try {
+  //   const { ownerId, categorySlug } = req.params;
+
+  //   // Validate category by slug
+  //   const category = await Category.findOne({ slug: categorySlug });
+  //   if (!category) {
+  //     return res
+  //       .status(404)
+  //       .json({ success: false, message: "Category not found" });
+  //   }
+
+  //   const refType = category.name;
+
+  //   // Validate refType
+  //   if (!["Villa", "Camping", "Hotel", "Cottage"].includes(refType)) {
+  //     return res
+  //       .status(400)
+  //       .json({ success: false, message: "Unsupported category type" });
+  //   }
+
+  //   // Find owner
+  //   const owner = await Owner.findById(ownerId);
+  //   if (!owner) {
+  //     return res
+  //       .status(404)
+  //       .json({ success: false, message: "Owner not found" });
+  //   }
+
+  //   // Filter properties by refType
+  //   const matchedProperties = owner.properties.filter(
+  //     (p) => p.refType === refType
+  //   );
+
+  //   const refIds = matchedProperties.map((p) => p.refId);
+
+  //   // Dynamically select model
+  //   const modelMap = {
+  //     Villa,
+  //     Camping,
+  //     Hotel,
+  //     Cottage,
+  //   };
+
+  //   const propertiesData = await modelMap[refType].find({
+  //     _id: { $in: refIds },
+  //   });
+
+  //   return res.status(200).json({
+  //     success: true,
+  //     data: propertiesData,
+  //   });
+  // } catch (error) {
+  //   console.error(error);
+  //   return res.status(500).json({ success: false, message: "Server error" });
+  // }
+
+  try {
+    const { ownerId, categorySlug } = req.params;
+
+    // Validate category by slug
+    const category = await Category.findOne({ slug: categorySlug });
+    if (!category) {
+      return next(new AppErr("Category not found", 404));
+    }
+
+    const refType = category.name;
+
+    if (!["Villa", "Camping", "Hotel", "Cottage"].includes(refType)) {
+      return next(new AppErr("Unsupported category type", 400));
+    }
+
+    // Validate owner
+    const owner = await Owner.findById(ownerId);
+    if (!owner) {
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    // Filter properties by category
+    const matchedProperties = owner.properties.filter(
+      (p) => p.refType === refType
+    );
+
+    const refIds = matchedProperties.map((p) => p.refId);
+
+    const modelMap = { Villa, Camping, Hotel, Cottage };
+    const Model = modelMap[refType];
+
+    const propertiesData = await Model.find({ _id: { $in: refIds } });
+
+    return res.status(200).json({
+      success: true,
+      data: propertiesData,
+    });
+  } catch (error) {
+    console.error(error);
+    next(new AppErr("Server error", 500));
+  }
+};
+
+const modelMap = {
+  Villa,
+  Hotel,
+  Camping,
+  Cottage,
+};
+
+const getAllOwnerProperties = async (req, res, next) => {
+  try {
+    const { ownerId } = req.params;
+
+    const owner = await Owner.findById(ownerId);
+    if (!owner) {
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    const allProperties = [];
+
+    for (const property of owner.properties) {
+      const { refType, refId } = property;
+      const Model = modelMap[refType];
+
+      if (!Model) {
+        console.warn(`No model found for refType: ${refType}`);
+        continue; // skip unknown types
+      }
+
+      const data = await Model.findById(refId);
+      if (data) {
+        allProperties.push({ refType, ...data._doc });
+      }
+    }
+
+    return res.status(200).json({
+      status: true,
+      data: allProperties,
+    });
+  } catch (error) {
+    next(new AppErr(error.message || "Server error", 500));
+  }
+};
 
 // Create owner
 const createOwner = async (req, res, next) => {
- try {
+  try {
     const { firebaseUID, name, email, phone, profilePic } = req.body;
 
     let owner = await Owner.findOne({ firebaseUID, email });
@@ -25,7 +172,7 @@ const createOwner = async (req, res, next) => {
       data: owner,
     });
   } catch (error) {
-     next(new AppErr("Login or registration failed", 500));
+    next(new AppErr("Login or registration failed", 500));
   }
 };
 
@@ -50,9 +197,6 @@ const loginOwnerWithFirebase = async (req, res, next) => {
     next(new AppErr("Error logging in owner", 500));
   }
 };
-
-
-
 
 // Get all owners
 const getAllOwners = async (req, res, next) => {
@@ -92,7 +236,9 @@ const updateOwner = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const updatedOwner = await Owner.findByIdAndUpdate(id, req.body, { new: true });
+    const updatedOwner = await Owner.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
 
     if (!updatedOwner) return next(new AppErr("Owner not found", 404));
 
@@ -111,7 +257,11 @@ const updateOwner = async (req, res, next) => {
 const deleteOwner = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const deletedOwner = await Owner.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
+    const deletedOwner = await Owner.findByIdAndUpdate(
+      id,
+      { deletedAt: new Date() },
+      { new: true }
+    );
 
     if (!deletedOwner) return next(new AppErr("Owner not found", 404));
 
@@ -159,5 +309,7 @@ module.exports = {
   getSingleOwner,
   updateOwner,
   deleteOwner,
-  loginOwnerWithFirebase
+  loginOwnerWithFirebase,
+  getPropertiesByCategorySlug,
+  getAllOwnerProperties,
 };
