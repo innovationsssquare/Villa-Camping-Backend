@@ -25,6 +25,20 @@ const OwnerSchema = new mongoose.Schema(
       type: String,
       default: "owner",
     },
+    bankDetails: {
+      accountHolderName: String,
+      accountNumber: String,
+      ifscCode: String,
+      bankName: String,
+      branchName: String,
+      upiId: String,
+    },
+    documents: {
+      idProof: String,
+      agreement: String,
+      bankProof: String,
+    },
+
     properties: [
       {
         refType: {
@@ -39,6 +53,7 @@ const OwnerSchema = new mongoose.Schema(
         },
       },
     ],
+
     deletedAt: {
       type: Date,
       default: null,

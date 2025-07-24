@@ -1,21 +1,33 @@
 const Villa = require("../Model/Villaschema");
 const AppErr = require("../Services/AppErr");
-
+const Owner =require("../Model/Ownerschema")
 // Create a Villa
 const createVilla = async (req, res, next) => {
   try {
+    // Validate required fields manually for better error messaging (optional but useful)
+    const requiredFields = ["owner", "category"];
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(", ")}`,
+      });
+    }
+
+    // Create the Villa using Mongoose schema validation
     const villa = await Villa.create(req.body);
 
-    // Push the villa into owner's properties array
+    // Add this villa to the owner's properties array
     await Owner.findByIdAndUpdate(
       villa.owner,
       {
         $push: {
           properties: {
             refType: "Villa",
-            refId: villa._id
-          }
-        }
+            refId: villa._id,
+          },
+        },
       },
       { new: true }
     );
@@ -23,10 +35,21 @@ const createVilla = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "Villa created and added to owner's properties",
-      data: villa
+      data: villa,
     });
   } catch (err) {
     console.error(err);
+
+    // Handle Mongoose validation errors
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
+
     next(new AppErr("Failed to create villa", 500));
   }
 };
