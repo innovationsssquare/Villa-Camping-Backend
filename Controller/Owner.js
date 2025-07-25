@@ -276,32 +276,120 @@ const deleteOwner = async (req, res, next) => {
   }
 };
 
-// Add property to owner
-// const addPropertyToOwner = async (req, res, next) => {
-//   try {
-//     const { ownerId, propertyId } = req.params;
+const checkOwnerProfileCompletion = async (req, res, next) => {
+  try {
+    const { ownerId } = req.params;
 
-//     const owner = await Owner.findById(ownerId);
-//     if (!owner) return next(new AppErr("Owner not found", 404));
+    if (!ownerId) {
+      return next(new AppError("Owner ID is required", 400));
+    }
 
-//     const property = await Property.findById(propertyId);
-//     if (!property) return next(new AppErr("Property not found", 404));
+    const owner = await Owner.findById(ownerId);
 
-//     if (!owner.properties.includes(propertyId)) {
-//       owner.properties.push(propertyId);
-//       await owner.save();
-//     }
+    if (!owner) {
+      return next(new AppError("Owner not found", 404));
+    }
 
-//     res.status(200).json({
-//       success: true,
-//       message: "Property added to owner",
-//       data: owner,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     next(new AppErr("Error adding property to owner", 500));
-//   }
-// };
+    const { bankDetails, documents } = owner;
+
+    const isBankDetailsFilled =
+      bankDetails &&
+      bankDetails.accountHolderName &&
+      bankDetails.accountNumber &&
+      bankDetails.ifscCode &&
+      bankDetails.bankName &&
+      bankDetails.branchName &&
+      bankDetails.upiId;
+
+    const isDocumentsUploaded =
+      documents &&
+      documents.idProof &&
+      documents.agreement &&
+      documents.bankProof;
+
+    const profileCompletionStatus = {
+      bankDetailsComplete: !!isBankDetailsFilled,
+      documentsComplete: !!isDocumentsUploaded,
+    };
+
+    // Optionally, trigger a notification or return a message
+    if (!isBankDetailsFilled || !isDocumentsUploaded) {
+      return res.status(200).json({
+        success: true,
+        showReminder: true,
+        message: "Please complete your profile (bank details/documents)",
+        data: profileCompletionStatus,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      showReminder: false,
+      message: "Profile is complete",
+      data: profileCompletionStatus,
+    });
+  } catch (error) {
+    console.error(error);
+    next(new AppErr("Error while fetching  owner", 500));
+  }
+};
+
+const updateBankDetails = async (req, res, next) => {
+  try {
+    const owner = await Owner.findByIdAndUpdate(
+      req.params.ownerId,
+      { bankDetails: req.body },
+      { new: true, runValidators: true }
+    );
+
+    if (!owner) {
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    res.status(200).json({
+      status: true,
+      message: "Bank details updated successfully",
+      data: owner.bankDetails,
+    });
+  } catch (err) {
+    next(new AppErr(err.message || "Failed to update bank details", 500));
+  }
+};
+
+const uploadOwnerDocuments = async (req, res, next) => {
+  try {
+    const { idProof, agreement, bankProof } = req.body;
+
+    if (!idProof || !agreement || !bankProof) {
+      return next(new AppErr("All documents are required", 400));
+    }
+
+    const updatedOwner = await Owner.findByIdAndUpdate(
+      req.params.ownerId,
+      {
+        documents: {
+          idProof,
+          agreement,
+          bankProof,
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedOwner) {
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    res.status(200).json({
+      status: true,
+      message: "Documents uploaded successfully",
+      data: updatedOwner.documents,
+    });
+  } catch (err) {
+    next(new AppErr(err.message || "Failed to upload documents", 500));
+  }
+};
+
 
 module.exports = {
   createOwner,
@@ -312,4 +400,7 @@ module.exports = {
   loginOwnerWithFirebase,
   getPropertiesByCategorySlug,
   getAllOwnerProperties,
+  checkOwnerProfileCompletion,
+  updateBankDetails,
+  uploadOwnerDocuments
 };

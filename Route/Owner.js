@@ -8,15 +8,32 @@ const {
   deleteOwner,
   loginOwnerWithFirebase,
   getPropertiesByCategorySlug,
-  getAllOwnerProperties
+  getAllOwnerProperties,
+  checkOwnerProfileCompletion,
+  uploadOwnerDocuments,
+  updateBankDetails,
 } = require("../Controller/Owner");
 const verifyToken = require("../MiddleWare/Verfiytoken");
 const verifyGoogleToken = require("../MiddleWare/verifyGoogleToken");
 
 const OwnerRouter = express.Router();
 
-OwnerRouter.get("/properties/:ownerId/:categorySlug", getPropertiesByCategorySlug);
+OwnerRouter.get(
+  "/properties/:ownerId/:categorySlug",
+  getPropertiesByCategorySlug
+);
 OwnerRouter.get("/owner/properties/:ownerId", getAllOwnerProperties);
+OwnerRouter.get(
+  "/profile-check/:ownerId",
+  verifyGoogleToken,
+  checkOwnerProfileCompletion
+);
+OwnerRouter.put("/update-bank/:ownerId", verifyGoogleToken, updateBankDetails);
+OwnerRouter.put(
+  "/upload-documents/:ownerId",
+  verifyGoogleToken,
+  uploadOwnerDocuments
+);
 
 // Owner login (Firebase Gmail)
 OwnerRouter.post(
