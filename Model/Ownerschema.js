@@ -75,11 +75,11 @@ const OwnerSchema = new mongoose.Schema(
 );
 
 // Encrypt only sensitive fields
-OwnerSchema.plugin(mongooseEncryption, {
-  encryptionKey: process.env.MONGO_ENCRYPTION_KEY, // Encryption key from environment variable
-  signingKey: process.env.MONGO_SIGNING_KEY, // Signing key from environment variable
-  encryptedFields: ['bankDetails', 'documents'], // Fields that should be encrypted
-});
+// OwnerSchema.plugin(mongooseEncryption, {
+//   encryptionKey: process.env.MONGO_ENCRYPTION_KEY, // Encryption key from environment variable
+//   signingKey: process.env.MONGO_SIGNING_KEY, // Signing key from environment variable
+//   encryptedFields: ['bankDetails', 'documents'], // Fields that should be encrypted
+// });
 
 OwnerSchema.pre("save", function (next) {
   if (this.isModified("bankDetails")) {
