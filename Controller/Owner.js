@@ -306,7 +306,7 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
       bankDetails.branchName &&
       bankDetails.upiId;
 
-    const requiredTypes = ["Adhaar", "Agreement", "BankProof"];
+    const requiredTypes = ["adhaar", "agreement", "bank_passbook"];
     const uploadedTypes = Array.isArray(documents)
       ? documents.map((doc) => doc.type)
       : [];
