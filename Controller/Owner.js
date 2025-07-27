@@ -292,17 +292,8 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
       return next(new AppErr("Owner not found", 404));
     }
 
-    // If owner has no properties, skip the profile completion check
+    // Check if owner has any properties
     const hasProperties = Array.isArray(owner.properties) && owner.properties.length > 0;
-
-    if (!hasProperties) {
-      return res.status(200).json({
-        success: true,
-        showReminder: false,
-        message: "No properties found for this owner. Skipping profile check.",
-        data: null,
-      });
-    }
 
     const { bankDetails, documents } = owner;
 
@@ -325,9 +316,19 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
     );
 
     const profileCompletionStatus = {
+      propertyAdded: hasProperties,
       bankDetailsComplete: !!isBankDetailsFilled,
       documentsComplete: !!isDocumentsUploaded,
     };
+
+    if (!hasProperties) {
+      return res.status(200).json({
+        success: true,
+        showReminder: false,
+        message: "No properties found for this owner. Skipping profile check.",
+        data: profileCompletionStatus,
+      });
+    }
 
     if (!isBankDetailsFilled || !isDocumentsUploaded) {
       return res.status(200).json({
@@ -349,6 +350,7 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
     next(new AppErr("Error while fetching owner", 500));
   }
 };
+
 
 
 
