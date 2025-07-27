@@ -25,13 +25,13 @@ OwnerRouter.get(
 OwnerRouter.get("/owner/properties/:ownerId", getAllOwnerProperties);
 OwnerRouter.get(
   "/profile-check/:ownerId",
-  // verifyGoogleToken,
+  verifyGoogleToken,
   checkOwnerProfileCompletion
 );
 OwnerRouter.put("/update-bank/:ownerId", verifyGoogleToken, updateBankDetails);
 OwnerRouter.put(
   "/upload-documents/:ownerId",
-  // verifyGoogleToken,
+  verifyGoogleToken,
   uploadOwnerDocuments
 );
 
