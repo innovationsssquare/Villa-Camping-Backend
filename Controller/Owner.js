@@ -283,13 +283,25 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
     const { ownerId } = req.params;
 
     if (!ownerId) {
-      return next(new AppError("Owner ID is required", 400));
+      return next(new AppErr("Owner ID is required", 400));
     }
 
     const owner = await Owner.findById(ownerId);
 
     if (!owner) {
-      return next(new AppError("Owner not found", 404));
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    // If owner has no properties, skip the profile completion check
+    const hasProperties = Array.isArray(owner.properties) && owner.properties.length > 0;
+
+    if (!hasProperties) {
+      return res.status(200).json({
+        success: true,
+        showReminder: false,
+        message: "No properties found for this owner. Skipping profile check.",
+        data: null,
+      });
     }
 
     const { bankDetails, documents } = owner;
@@ -303,18 +315,20 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
       bankDetails.branchName &&
       bankDetails.upiId;
 
-    const isDocumentsUploaded =
-      documents &&
-      documents.idProof &&
-      documents.agreement &&
-      documents.bankProof;
+    const requiredTypes = ["Adhaar", "Agreement", "BankProof"];
+    const uploadedTypes = Array.isArray(documents)
+      ? documents.map((doc) => doc.type)
+      : [];
+
+    const isDocumentsUploaded = requiredTypes.every((type) =>
+      uploadedTypes.includes(type)
+    );
 
     const profileCompletionStatus = {
       bankDetailsComplete: !!isBankDetailsFilled,
       documentsComplete: !!isDocumentsUploaded,
     };
 
-    // Optionally, trigger a notification or return a message
     if (!isBankDetailsFilled || !isDocumentsUploaded) {
       return res.status(200).json({
         success: true,
@@ -332,9 +346,11 @@ const checkOwnerProfileCompletion = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
-    next(new AppErr("Error while fetching  owner", 500));
+    next(new AppErr("Error while fetching owner", 500));
   }
 };
+
+
 
 const updateBankDetails = async (req, res, next) => {
   try {
@@ -360,20 +376,27 @@ const updateBankDetails = async (req, res, next) => {
 
 const uploadOwnerDocuments = async (req, res, next) => {
   try {
-    const { idProof, agreement, bankProof } = req.body;
+    const { documents } = req.body;
 
-    if (!idProof || !agreement || !bankProof) {
-      return next(new AppErr("All documents are required", 400));
+    if (!Array.isArray(documents) || documents.length === 0) {
+      return next(new AppErr("At least one document is required", 400));
     }
+
+    const formattedDocuments = documents.map((doc) => ({
+      type: doc.type,
+      title: doc.title,
+      description: doc.description,
+      date: doc.date,
+      size: doc.size,
+      status: doc.status || "available",
+      downloadUrl: doc.downloadUrl,
+    }));
 
     const updatedOwner = await Owner.findByIdAndUpdate(
       req.params.ownerId,
       {
-        documents: {
-          idProof,
-          agreement,
-          bankProof,
-        },
+        documents: formattedDocuments,
+        documentsUpdated: true,
       },
       { new: true, runValidators: true }
     );
@@ -383,7 +406,7 @@ const uploadOwnerDocuments = async (req, res, next) => {
     }
 
     res.status(200).json({
-      status: true,
+      success: true,
       message: "Documents uploaded successfully",
       data: updatedOwner.documents,
     });
@@ -391,6 +414,7 @@ const uploadOwnerDocuments = async (req, res, next) => {
     next(new AppErr(err.message || "Failed to upload documents", 500));
   }
 };
+
 
 
 module.exports = {

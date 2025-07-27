@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 const mongooseEncryption = require("mongoose-encryption");
 
-
-
-
-
 const OwnerSchema = new mongoose.Schema(
   {
     firebaseUID: {
@@ -36,11 +32,17 @@ const OwnerSchema = new mongoose.Schema(
       phone: String,
     },
 
-    documents: {
-      idProof: String,
-      agreement: String,
-      bankProof: String,
-    },
+    documents: [
+      {
+        type: { type: String, required: true },
+        title: { type: String, required: true },
+        description: { type: String },
+        date: { type: Date },
+        size: { type: String },
+        status: { type: String, default: "available" },
+        downloadUrl: { type: String },
+      },
+    ],
 
     properties: [
       {
