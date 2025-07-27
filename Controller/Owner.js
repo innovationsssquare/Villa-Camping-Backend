@@ -384,7 +384,8 @@ const uploadOwnerDocuments = async (req, res, next) => {
       return next(new AppErr("At least one document is required", 400));
     }
 
-    const formattedDocuments = documents.map((doc) => ({
+    // Format the new documents
+    const newFormattedDocuments = documents.map((doc) => ({
       type: doc.type,
       title: doc.title,
       description: doc.description,
@@ -394,28 +395,30 @@ const uploadOwnerDocuments = async (req, res, next) => {
       downloadUrl: doc.downloadUrl,
     }));
 
-    const updatedOwner = await Owner.findByIdAndUpdate(
-      req.params.ownerId,
-      {
-        documents: formattedDocuments,
-        documentsUpdated: true,
-      },
-      { new: true, runValidators: true }
-    );
+    const owner = await Owner.findById(req.params.ownerId);
 
-    if (!updatedOwner) {
+    if (!owner) {
       return next(new AppErr("Owner not found", 404));
     }
+
+    // Combine existing and new documents
+    const updatedDocuments = [...(owner.documents || []), ...newFormattedDocuments];
+
+    // Save the updated documents
+    owner.documents = updatedDocuments;
+    owner.documentsUpdated = true;
+    await owner.save();
 
     res.status(200).json({
       success: true,
       message: "Documents uploaded successfully",
-      data: updatedOwner.documents,
+      data: owner.documents,
     });
   } catch (err) {
     next(new AppErr(err.message || "Failed to upload documents", 500));
   }
 };
+
 
 
 
