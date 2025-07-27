@@ -7,6 +7,15 @@ const Cottage = require("../Model/Cottageschema");
 const Camping = require("../Model/Campingschema");
 const Category = require("../Model/Categoryschema");
 
+const decryptData = (data) => {
+  if (data && data.buffer) {
+    const buffer = Buffer.from(data.buffer);
+    return buffer.toString('utf-8');
+  }
+  return null; // or return an empty string or some fallback
+};
+
+
 const getPropertiesByCategorySlug = async (req, res, next) => {
   // try {
   //   const { ownerId, categorySlug } = req.params;
@@ -223,6 +232,14 @@ const getSingleOwner = async (req, res, next) => {
     });
 
     if (!owner) return next(new AppErr("Owner not found", 404));
+
+ if (owner.bankDetails) {
+      owner.bankDetails = decryptData(owner.bankDetails);
+    }
+
+    if (owner.documents) {
+      owner.documents = decryptData(owner.documents);
+    }
 
     res.status(200).json({ success: true, data: owner });
   } catch (error) {

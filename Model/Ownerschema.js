@@ -1,13 +1,9 @@
 const mongoose = require("mongoose");
 const mongooseEncryption = require("mongoose-encryption");
 
-// Ensure the encryption and signing keys are loaded from the environment variables
-const encKey = process.env.MONGO_ENCRYPTION_KEY; // Must be exactly 32 characters
-const sigKey = process.env.MONGO_SIGNING_KEY; // Optional but recommended
 
-if (!encKey || !sigKey) {
-  throw new Error("Encryption and Signing keys are required");
-}
+
+
 
 const OwnerSchema = new mongoose.Schema(
   {
@@ -80,9 +76,9 @@ const OwnerSchema = new mongoose.Schema(
 
 // Encrypt only sensitive fields
 OwnerSchema.plugin(mongooseEncryption, {
-  encryptionKey: encKey,
-  signingKey: sigKey,
-  encryptedFields: ["bankDetails", "documents"], // Fields to encrypt
+  encryptionKey: process.env.MONGO_ENCRYPTION_KEY, // Encryption key from environment variable
+  signingKey: process.env.MONGO_SIGNING_KEY, // Signing key from environment variable
+  encryptedFields: ['bankDetails', 'documents'], // Fields that should be encrypted
 });
 
 OwnerSchema.pre("save", function (next) {
