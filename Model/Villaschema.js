@@ -18,8 +18,14 @@ const VillaSchema = new mongoose.Schema(
       type: String,
     },
 
+    description: {
+      type: String,
+    },
+
     location: {
       addressLine: { type: String },
+      maplink: { type: String },
+      coordinates: { type: String },
       city: { type: String },
       area: { type: String },
     },
@@ -118,6 +124,23 @@ const VillaSchema = new mongoose.Schema(
     isLive: {
       type: Boolean,
       default: false,
+    },
+    reviews: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        rating: { type: Number, required: true },
+        comment: { type: String },
+        images: [String],
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
     },
     deletedAt: {
       type: Date,

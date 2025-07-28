@@ -149,6 +149,55 @@ const getVillaByProperty = async (req, res, next) => {
   }
 };
 
+
+// Add a review to a villa and update average rating
+const addVillaReview = async (req, res, next) => {
+  try {
+    const { villaId } = req.params;
+    const { userId, rating, comment, images } = req.body;
+
+    if (!villaId || !userId || !rating) {
+      return next(new AppErr("Villa ID, User ID, and Rating are required", 400));
+    }
+
+    const villa = await Villa.findById(villaId);
+    if (!villa || villa.deletedAt) {
+      return next(new AppErr("Villa not found or has been deleted", 404));
+    }
+
+    // Push the new review to the reviews array
+    villa.reviews.push({
+      userId,
+      rating,
+      comment,
+      images,
+    });
+
+    // Recalculate average rating
+    const totalRatings = villa.reviews.reduce((sum, review) => sum + review.rating, 0);
+    const totalReviews = villa.reviews.length;
+    villa.averageRating = totalRatings / totalReviews;
+    villa.totalReviews = totalReviews;
+
+    await villa.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Review added successfully",
+      data: {
+        reviews: villa.reviews,
+        averageRating: villa.averageRating,
+        totalReviews: villa.totalReviews,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    next(new AppErr("Failed to add review", 500));
+  }
+};
+
+
+
 module.exports = {
   createVilla,
   getAllVillas,
@@ -156,4 +205,5 @@ module.exports = {
   updateVilla,
   softDeleteVilla,
   getVillaByProperty,
+  addVillaReview
 };
