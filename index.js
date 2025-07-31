@@ -10,6 +10,7 @@ const AppErr = require("./Services/AppErr");
 const {CategoryRouter} =require("./Route/Category")
 const {OwnerRouter} =require("./Route/Owner")
 const {VillaRouter} =require("./Route/Villa")
+const {CampingRouter} =require("./Route/Camping")
 
  DbConnection();
 
@@ -42,6 +43,7 @@ app.use(bodyParser.json());
 app.use("/api/v1/Category", CategoryRouter);
 app.use("/api/v1/Owner", OwnerRouter);
 app.use("/api/v1/Villa", VillaRouter);
+app.use("/api/v1/Camping", CampingRouter);
 
 
 
