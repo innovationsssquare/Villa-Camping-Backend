@@ -133,6 +133,6 @@ const CottageSchema = new mongoose.Schema({
 });
 
 module.exports = {
-  Cottages: mongoose.model("Cottage", CottageSchema),
-  Cottage: mongoose.model("Cottages", CottageUnitSchema),
+  Cottage: mongoose.model("Cottage", CottageSchema),
+  Cottages: mongoose.model("Cottages", CottageUnitSchema),
 };
