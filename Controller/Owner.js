@@ -39,7 +39,7 @@ const getPropertiesByCategorySlug = async (req, res, next) => {
       Villa: Villa,
       Camping: Camping.Camping,
       Hotel: Hotel.Hotels,
-      Cottage: Cottage.Cottages,
+      Cottag: Cottage.Cottage,
     };
 
     const Model = modelMap[refType];
@@ -73,7 +73,7 @@ const getAllOwnerProperties = async (req, res, next) => {
       Villa: Villa,
       Camping: Camping.Camping,
       Hotel: Hotel.Hotels,
-      Cottage: Cottage.Cottages,
+      Cottages: Cottage.Cottages,
     };
 
     const allProperties = [];
