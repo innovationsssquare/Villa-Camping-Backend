@@ -33,6 +33,7 @@ const getPropertiesByCategorySlug = async (req, res, next) => {
     const matchedProperties = owner.properties.filter(
       (p) => p.refType === refType
     );
+    console.log(matchedProperties)
     const refIds = matchedProperties.map((p) => p.refId);
 
     const modelMap = {
@@ -43,6 +44,7 @@ const getPropertiesByCategorySlug = async (req, res, next) => {
     };
 
     const Model = modelMap[refType];
+    console.log(Model)
     if (!Model) {
       return next(new AppErr("Model not found for category", 500));
     }

@@ -37,7 +37,7 @@ const createCottage = async (req, res, next) => {
       {
         $push: {
           properties: {
-            refType: "Cottages",
+            refType: "Cottage",
             refId: newCottage._id,
           },
         },
