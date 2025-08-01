@@ -75,7 +75,7 @@ const getAllOwnerProperties = async (req, res, next) => {
       Villa: Villa,
       Camping: Camping.Camping,
       Hotel: Hotel.Hotels,
-      Cottages: Cottage.Cottages,
+      Cottage: Cottage.Cottages,
     };
 
     const allProperties = [];
