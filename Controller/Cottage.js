@@ -17,13 +17,13 @@ const createCottage = async (req, res, next) => {
 
     const { cottages: cottageUnits, ...cottageData } = req.body;
 
-    const newCottage = await Cottages.create({ ...cottageData });
+    const newCottage = await Cottage.create({ ...cottageData });
 
     const cottageUnitDocs = await Promise.all(
       cottageUnits.map(async (unit) => {
-        const unitDoc = await Cottage.create({
+        const unitDoc = await Cottages.create({
           ...unit,
-          Cottages: newCottage._id,
+          Cottage: newCottage._id,
         });
         return unitDoc._id;
       })
@@ -37,7 +37,7 @@ const createCottage = async (req, res, next) => {
       {
         $push: {
           properties: {
-            refType: "Cottages",
+            refType: "Cottage",
             refId: newCottage._id,
           },
         },
