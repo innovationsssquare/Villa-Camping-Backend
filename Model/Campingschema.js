@@ -13,7 +13,6 @@ const TentSchema = new mongoose.Schema({
     required: true,
   },
   totaltents: { type: Number, required: true },
-  CampingRules:[String],
   minCapacity: Number,
   maxCapacity: Number,
   extraPersonCharge: Number,

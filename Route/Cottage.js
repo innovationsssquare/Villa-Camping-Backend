@@ -1,20 +1,22 @@
 const express = require("express");
-const router = express.Router();
-const CottageController = require("../Controller/CottageController");
+const {
+  createCottage,
+  getAllCottages,
+  getCottageById,
+  updateCottage,
+  softDeleteCottage,
+  getCottageByProperty,
+  addCottageReview,
+} = require("../Controller/Cottage");
 
-// Create cottage parent & unit
-router.post("/add", CottageController.createCottage);
+const CottageRouter = express.Router();
 
-// Get all cottages
-router.get("/getAll", CottageController.getAllCottages);
+CottageRouter.post("/create/cottage", createCottage);
+CottageRouter.get("/get/cottages", getAllCottages);
+CottageRouter.get("/get/cottage/:id", getCottageById);
+CottageRouter.put("/update/cottage/:id", updateCottage);
+CottageRouter.delete("/delete/cottage/:id", softDeleteCottage);
+CottageRouter.get("/get/cottages/property/:propertyId", getCottageByProperty);
+CottageRouter.post("/add/review/:cottageId", addCottageReview);
 
-// Get a single cottage by ID
-router.get("/get/:id", CottageController.getCottageById);
-
-// Update cottage unit
-router.put("/update/:id", CottageController.updateCottageUnit);
-
-// Soft delete cottage unit
-router.delete("/delete/:id", CottageController.deleteCottageUnit);
-
-module.exports = router;
+module.exports = { CottageRouter };
