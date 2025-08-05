@@ -13,6 +13,7 @@ const {VillaRouter} =require("./Route/Villa")
 const {CampingRouter} =require("./Route/Camping")
 const {CottageRouter} =require("./Route/Cottage")
 const {HotelRouter} =require("./Route/Hotel")
+const {AdminRouter} =require("./Route/Admin")
 
  DbConnection();
 
@@ -48,6 +49,7 @@ app.use("/api/v1/Villa", VillaRouter);
 app.use("/api/v1/Camping", CampingRouter);
 app.use("/api/v1/Cottage", CottageRouter);
 app.use("/api/v1/Hotel", HotelRouter);
+app.use("/api/v1/Admin", AdminRouter);
 
 
 

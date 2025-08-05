@@ -196,6 +196,74 @@ const addVillaReview = async (req, res, next) => {
   }
 };
 
+const approveRejectVilla = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
+    }
+
+    const updatedVilla = await Villa.findByIdAndUpdate(
+      id,
+      { isapproved: status },
+      { new: true }
+    );
+
+    if (!updatedVilla) {
+      return next(new AppErr("Villa not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Villa has been ${status}`,
+      data: updatedVilla,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to approve or reject villa", 500));
+  }
+};
+
+const addCommissionAndUpdateStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { commission, isLive } = req.body;
+
+    // Validate commission
+    if (commission && typeof commission !== 'number') {
+      return next(new AppErr('Commission should be a number', 400));
+    }
+
+    // Validate isLive
+    if (typeof isLive !== 'boolean') {
+      return next(new AppErr('isLive should be a boolean value', 400));
+    }
+
+    // Find the villa and update commission and isLive
+    const updatedVilla = await Villa.findByIdAndUpdate(
+      id,
+      { commission, isLive },
+      { new: true }
+    );
+
+    if (!updatedVilla) {
+      return next(new AppErr("Villa not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Commission and status updated successfully",
+      data: updatedVilla,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to add commission and update status", 500));
+  }
+};
+
+
 
 
 module.exports = {
@@ -205,5 +273,7 @@ module.exports = {
   updateVilla,
   softDeleteVilla,
   getVillaByProperty,
-  addVillaReview
+  addVillaReview,
+  approveRejectVilla,
+  addCommissionAndUpdateStatus
 };

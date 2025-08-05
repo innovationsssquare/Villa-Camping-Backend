@@ -7,6 +7,8 @@ const {
   softDeleteVilla,
   getVillaByProperty,
   addVillaReview,
+  approveRejectVilla,
+  addCommissionAndUpdateStatus
 } = require("../Controller/Villa");
 
 const VillaRouter = express.Router();
@@ -20,4 +22,6 @@ VillaRouter.get("/get/villas/property/:propertyId", getVillaByProperty);
 // villaRoutes.js or wherever your router lives
 VillaRouter.post("/:villaId/reviews", addVillaReview);
 
+VillaRouter.put("/approve-reject/:id", approveRejectVilla);
+VillaRouter.put("/add-commission/:id", addCommissionAndUpdateStatus);
 module.exports = { VillaRouter };
