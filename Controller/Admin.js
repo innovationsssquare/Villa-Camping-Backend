@@ -239,10 +239,12 @@ const getPropertiesByCategory = async (req, res, next) => {
     const totalProperties = await Model.countDocuments(filter); // Get the total number of properties
     const totalPages = Math.ceil(totalProperties / limit); // Calculate total pages
 
-    // Fetch the properties with pagination
+    // Fetch the properties with pagination and populate owner and category
     const properties = await Model.find(filter)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate("owner") // Populate the owner field with owner data
+      .populate("category"); // Populate the category field with category data
 
     if (!properties || properties.length === 0) {
       return next(new AppErr("No properties found for this category", 404));
@@ -263,6 +265,7 @@ const getPropertiesByCategory = async (req, res, next) => {
     next(new AppErr("Failed to fetch properties by category", 500));
   }
 };
+
 
 
 
