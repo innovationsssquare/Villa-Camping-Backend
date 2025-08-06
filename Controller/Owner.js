@@ -448,6 +448,34 @@ const uploadOwnerDocuments = async (req, res, next) => {
   }
 };
 
+const getOwnerCounts = async (req, res, next) => {
+  try {
+    // Count total owners, verified owners, and not verified owners
+    const totalOwners = await Owner.countDocuments({ deletedAt: null });
+    const verifiedOwners = await Owner.countDocuments({
+      isVerified: true,
+      deletedAt: null,
+    });
+    const notVerifiedOwners = await Owner.countDocuments({
+      isVerified: false,
+      deletedAt: null,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalOwners,
+        verifiedOwners,
+        notVerifiedOwners,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    next(new AppErr("Error fetching owner counts", 500));
+  }
+};
+
+
 module.exports = {
   createOwner,
   getAllOwners,
@@ -460,4 +488,5 @@ module.exports = {
   checkOwnerProfileCompletion,
   updateBankDetails,
   uploadOwnerDocuments,
+  getOwnerCounts
 };
