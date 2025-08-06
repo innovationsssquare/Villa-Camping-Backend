@@ -267,6 +267,74 @@ const getPropertiesByCategory = async (req, res, next) => {
 };
 
 
+const getPropertyCounts = async (req, res, next) => {
+  try {
+    // Define the model map based on category
+    const modelMap = {
+      Villa: Villa,
+      Camping: Camping.Camping, // Assuming Camping has a .Camping model
+      Cottage: Cottage.Cottages, // Assuming Cottage has a .Cottages model
+      Hotel: Hotel.Hotels, // Assuming Hotel has a .Hotels model
+    };
+
+    // Get counts for all properties (excluding soft-deleted properties)
+    const totalProperties = await Promise.all(
+      Object.values(modelMap).map(async (Model) => {
+        const total = await Model.countDocuments({
+          deletedAt: null, // Exclude soft-deleted properties
+        });
+        return total;
+      })
+    );
+
+    // Get counts for properties based on their approval status and excluding soft-deleted properties
+    const pendingProperties = await Promise.all(
+      Object.values(modelMap).map(async (Model) => {
+        const pending = await Model.countDocuments({
+          isapproved: "pending",
+          deletedAt: null, // Exclude soft-deleted properties
+        });
+        return pending;
+      })
+    );
+
+    const approvedProperties = await Promise.all(
+      Object.values(modelMap).map(async (Model) => {
+        const approved = await Model.countDocuments({
+          isapproved: "approved",
+          deletedAt: null, // Exclude soft-deleted properties
+        });
+        return approved;
+      })
+    );
+
+    const rejectedProperties = await Promise.all(
+      Object.values(modelMap).map(async (Model) => {
+        const rejected = await Model.countDocuments({
+          isapproved: "rejected",
+          deletedAt: null, // Exclude soft-deleted properties
+        });
+        return rejected;
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalProperties: totalProperties.reduce((a, b) => a + b, 0),
+        pendingProperties: pendingProperties.reduce((a, b) => a + b, 0),
+        approvedProperties: approvedProperties.reduce((a, b) => a + b, 0),
+        rejectedProperties: rejectedProperties.reduce((a, b) => a + b, 0),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    next(new AppErr("Failed to fetch property counts", 500));
+  }
+};
+
+
+
 
 
 
@@ -280,5 +348,6 @@ module.exports = {
   getBookingDetails,
   getAnalytics,
   getRevenue,
-  getPropertiesByCategory
+  getPropertiesByCategory,
+  getPropertyCounts
 };

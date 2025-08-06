@@ -9,7 +9,8 @@ const {
   getBookingDetails,
   getAnalytics,
   getRevenue,
-  getPropertiesByCategory
+  getPropertiesByCategory,
+  getPropertyCounts
 } = require("../Controller/Admin");
 
 const verifyToken = require("../MiddleWare/Verfiytoken");
@@ -33,6 +34,7 @@ AdminRouter.get("/analytics", getAnalytics);
 // Get total revenue from bookings
 AdminRouter.get("/revenue", getRevenue);
 AdminRouter.get("/properties/category/:categoryId", getPropertiesByCategory);
+AdminRouter.get("/get/property/counts", getPropertyCounts);
 
 
 
