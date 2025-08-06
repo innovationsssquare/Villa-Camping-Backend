@@ -200,17 +200,48 @@ const loginOwnerWithFirebase = async (req, res, next) => {
 // Get all owners
 const getAllOwners = async (req, res, next) => {
   try {
-    const owners = await Owner.find({ deletedAt: null }).populate({
-      path: "properties",
-      populate: { path: "category" }, // Ensure Property schema has 'category' populated
-    });
+    const { page = 1, limit = 10, isVerified } = req.query; // Default to page 1 and limit 10 if not provided
 
-    res.status(200).json({ success: true, data: owners });
+    // Build the filter to include or exclude verified owners
+    const filter = { deletedAt: null };
+    if (isVerified !== undefined) {
+      filter.isVerified = isVerified === "true"; // Convert to boolean based on the query parameter
+    }
+
+    // Calculate pagination values
+    const skip = (page - 1) * limit;
+    const totalOwners = await Owner.countDocuments(filter); // Total number of owners
+    const totalPages = Math.ceil(totalOwners / limit); // Total number of pages
+
+    // Fetch the owners with pagination and populated properties
+    const owners = await Owner.find(filter)
+      .skip(skip)
+      .limit(Number(limit))
+      .populate({
+        path: "properties",
+        populate: { path: "category" }, // Ensure Property schema has 'category' populated
+      });
+
+    if (!owners || owners.length === 0) {
+      return next(new AppErr("No owners found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: owners,
+      pagination: {
+        total: totalOwners,  // Total number of owners
+        page: Number(page),  // Current page number
+        limit: Number(limit), // Properties per page
+        totalPages: totalPages, // Total number of pages
+      },
+    });
   } catch (error) {
     console.error(error);
     next(new AppErr("Error fetching owners", 500));
   }
 };
+
 
 // Get single owner by ID
 const getSingleOwner = async (req, res, next) => {
