@@ -196,40 +196,15 @@ const addVillaReview = async (req, res, next) => {
   }
 };
 
-const approveRejectVilla = async (req, res, next) => {
+const approveAndUpdateVilla = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // 'approved' or 'rejected'
+    const { status, commission, isLive } = req.body; 
 
+    // Validate status
     if (!['approved', 'rejected'].includes(status)) {
       return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
     }
-
-    const updatedVilla = await Villa.findByIdAndUpdate(
-      id,
-      { isapproved: status },
-      { new: true }
-    );
-
-    if (!updatedVilla) {
-      return next(new AppErr("Villa not found", 404));
-    }
-
-    res.status(200).json({
-      success: true,
-      message: `Villa has been ${status}`,
-      data: updatedVilla,
-    });
-  } catch (err) {
-    console.error(err);
-    next(new AppErr("Failed to approve or reject villa", 500));
-  }
-};
-
-const addCommissionAndUpdateStatus = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { commission, isLive } = req.body;
 
     // Validate commission
     if (commission && typeof commission !== 'number') {
@@ -241,10 +216,10 @@ const addCommissionAndUpdateStatus = async (req, res, next) => {
       return next(new AppErr('isLive should be a boolean value', 400));
     }
 
-    // Find the villa and update commission and isLive
+    // Update villa status, commission, and isLive
     const updatedVilla = await Villa.findByIdAndUpdate(
       id,
-      { commission, isLive },
+      { isapproved: status, commission, isLive },
       { new: true }
     );
 
@@ -254,12 +229,12 @@ const addCommissionAndUpdateStatus = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: "Commission and status updated successfully",
+      message: `Villa has been ${status} and is now ${isLive ? 'live' : 'inactive'} with commission set.`,
       data: updatedVilla,
     });
   } catch (err) {
     console.error(err);
-    next(new AppErr("Failed to add commission and update status", 500));
+    next(new AppErr("Failed to approve, update status, or add commission", 500));
   }
 };
 
@@ -274,6 +249,5 @@ module.exports = {
   softDeleteVilla,
   getVillaByProperty,
   addVillaReview,
-  approveRejectVilla,
-  addCommissionAndUpdateStatus
+approveAndUpdateVilla
 };
