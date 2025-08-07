@@ -195,6 +195,48 @@ const addCampingReview = async (req, res, next) => {
   }
 };
 
+const approveAndUpdateCamping = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, commission, isLive } = req.body; 
+
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
+    }
+
+    // Validate commission
+    if (commission && typeof commission !== 'number') {
+      return next(new AppErr('Commission should be a number', 400));
+    }
+
+    // Validate isLive
+    if (typeof isLive !== 'boolean') {
+      return next(new AppErr('isLive should be a boolean value', 400));
+    }
+
+    // Update villa status, commission, and isLive
+    const updatedVilla = await Camping.findByIdAndUpdate(
+      id,
+      { isapproved: status, commission, isLive },
+      { new: true }
+    );
+
+    if (!updatedVilla) {
+      return next(new AppErr("Camping not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Camping has been ${status} and is now ${isLive ? 'live' : 'inactive'} with commission set.`,
+      data: updatedVilla,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to approve, update status, or add commission", 500));
+  }
+};
+
 module.exports = {
   createCamping,
   getAllCampings,
@@ -203,4 +245,5 @@ module.exports = {
   softDeleteCamping,
   getCampingByProperty,
   addCampingReview,
+  approveAndUpdateCamping
 };
