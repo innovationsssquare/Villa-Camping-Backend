@@ -14,6 +14,8 @@ const {CampingRouter} =require("./Route/Camping")
 const {CottageRouter} =require("./Route/Cottage")
 const {HotelRouter} =require("./Route/Hotel")
 const {AdminRouter} =require("./Route/Admin")
+const cron = require('node-cron');
+const axios = require('axios'); 
 
  DbConnection();
 
@@ -53,6 +55,10 @@ app.use("/api/v1/Admin", AdminRouter);
 
 
 
+app.get('/keepalive', (req, res) => {
+  res.send('Server is alive!');
+});
+
 //--------------Not Found Route-------------------//
 app.get("*", (req, res, next) => {
   return next(new AppErr("Route not found ! please try after some time", 404));
@@ -60,11 +66,23 @@ app.get("*", (req, res, next) => {
 
 
 
+const PORT = process.env.PORT || 9100;
+
+// Setting up cron job to ping the server every 5 minutes
+setInterval(async () => {
+  try {
+    await axios.get(`http://localhost:${PORT}/keepalive`);
+    console.log('Server is alive');
+  } catch (error) {
+    console.error('Error pinging server:', error);
+  }
+}, 6000); // 3000 milliseconds = 3 seconds
+
+
 
 //----------Global Error -----------//
 app.use(globalErrHandler);
 
-const PORT = process.env.PORT || 9100;
 httpServer.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
