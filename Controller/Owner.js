@@ -475,6 +475,39 @@ const getOwnerCounts = async (req, res, next) => {
   }
 };
 
+const verifyOwner = async (req, res, next) => {
+  try {
+    const { id } = req.params;  // Get the owner ID from the route parameter
+    const { isVerified } = req.body;  // Get the verification status from the request body
+
+    if (typeof isVerified !== "boolean") {
+      return next(new AppErr("isVerified must be a boolean value", 400));
+    }
+
+    // Find the owner by ID
+    const owner = await Owner.findById(id);
+    if (!owner) {
+      return next(new AppErr("Owner not found", 404));
+    }
+
+    // Update the owner's verification status
+    owner.isVerified = isVerified;
+
+    // Save the updated owner data
+    await owner.save();
+
+    res.status(200).json({
+      success: true,
+      message: isVerified ? "Owner verified successfully" : "Owner unverified successfully",
+      data: owner,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to verify the owner", 500));
+  }
+};
+
+
 
 module.exports = {
   createOwner,
@@ -488,5 +521,6 @@ module.exports = {
   checkOwnerProfileCompletion,
   updateBankDetails,
   uploadOwnerDocuments,
-  getOwnerCounts
+  getOwnerCounts,
+  verifyOwner
 };

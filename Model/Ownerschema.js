@@ -69,7 +69,7 @@ const OwnerSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-      default: false, // Initially false, can be set to true after verification
+      default: false,
     },
 
     deletedAt: {
