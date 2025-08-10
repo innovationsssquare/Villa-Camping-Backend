@@ -7,6 +7,7 @@ const {
   softDeleteHotel,
   getHotelByProperty,
   addHotelReview,
+  approveAndUpdateHotel
 } = require("../Controller/Hotel");
 
 const HotelRouter = express.Router();
@@ -18,5 +19,6 @@ HotelRouter.put("/update/hotel/:id", updateHotel);
 HotelRouter.delete("/delete/hotel/:id", softDeleteHotel);
 HotelRouter.get("/get/hotels/property/:propertyId", getHotelByProperty);
 HotelRouter.post("/add/review/:hotelId", addHotelReview);
+HotelRouter.put("/approve-reject/:id", approveAndUpdateHotel);
 
 module.exports = { HotelRouter };

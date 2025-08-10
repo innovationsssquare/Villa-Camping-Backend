@@ -190,6 +190,48 @@ const addHotelReview = async (req, res, next) => {
   }
 };
 
+const approveAndUpdateHotel = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, commission, isLive } = req.body; 
+
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
+    }
+
+    // Validate commission
+    if (commission && typeof commission !== 'number') {
+      return next(new AppErr('Commission should be a number', 400));
+    }
+
+    // Validate isLive
+    if (typeof isLive !== 'boolean') {
+      return next(new AppErr('isLive should be a boolean value', 400));
+    }
+
+    // Update villa status, commission, and isLive
+    const updatedVilla = await Hotels.findByIdAndUpdate(
+      id,
+      { isapproved: status, commission, isLive },
+      { new: true }
+    );
+
+    if (!updatedVilla) {
+      return next(new AppErr("Hotel not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Hotel has been ${status} and is now ${isLive ? 'live' : 'inactive'} with commission set.`,
+      data: updatedVilla,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to approve, update status, or add commission", 500));
+  }
+};
+
 module.exports = {
   createHotel,
   getAllHotels,
@@ -198,4 +240,5 @@ module.exports = {
   softDeleteHotel,
   getHotelByProperty,
   addHotelReview,
+  approveAndUpdateHotel
 };
