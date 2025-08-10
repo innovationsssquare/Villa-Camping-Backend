@@ -5,7 +5,7 @@ const RoomUnitSchema = new mongoose.Schema(
   {
     roomType: {
       type: String,
-      enum: ["Single", "Double", "Family"],
+      enum: ["Single", "Double", "family","deluxe"],
       required: true,
     },
     roomNumber: {
