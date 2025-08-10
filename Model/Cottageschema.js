@@ -128,7 +128,7 @@ const CottageSchema = new mongoose.Schema({
       pricePerNight: Number,
     },
   ],
-  cottages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cottage" }],
+  cottages: [{ type: mongoose.Schema.Types.ObjectId, ref: "CottageUnit" }],
   deletedAt: { type: Date, default: null },
 }, { collection: "cottages" });
 

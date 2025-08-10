@@ -86,16 +86,20 @@ const getAllCottages = async (req, res, next) => {
 const getCottageById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const cottage = await Cottages.findOne({ _id: id, deletedAt: null }).populate("cottages");
+
+    const cottage = await Cottages.findOne({ _id: id, deletedAt: null })
+      .populate("cottages"); // ✅ Path must match schema ref
 
     if (!cottage) return next(new AppErr("Cottage not found", 404));
 
     res.status(200).json({ success: true, data: cottage });
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching cottage:", err);
     next(new AppErr("Failed to fetch cottage", 500));
   }
 };
+
+
 
 // Update cottage property
 const updateCottage = async (req, res, next) => {
