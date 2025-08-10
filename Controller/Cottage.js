@@ -17,21 +17,25 @@ const createCottage = async (req, res, next) => {
 
     const { cottages: cottageUnits, ...cottageData } = req.body;
 
+    // Create a new Cottage document first
     const newCottage = await Cottages.create({ ...cottageData });
 
+    // Now create CottageUnits (which will be in a separate collection)
     const cottageUnitDocs = await Promise.all(
       cottageUnits.map(async (unit) => {
         const unitDoc = await Cottage.create({
           ...unit,
-          Cottages: newCottage._id,
+          Cottages: newCottage._id, // Reference to Cottage collection
         });
-        return unitDoc._id;
+        return unitDoc._id; // Save the CottageUnit's ID
       })
     );
 
+    // Save the CottageUnit IDs to the Cottage document
     newCottage.cottages = cottageUnitDocs;
     await newCottage.save();
 
+    // Update the Owner with the new Cottage reference
     await Owner.findByIdAndUpdate(
       newCottage.owner,
       {
@@ -45,6 +49,7 @@ const createCottage = async (req, res, next) => {
       { new: true }
     );
 
+    // Respond with success
     res.status(201).json({
       success: true,
       message: "Cottage property created successfully",
@@ -52,9 +57,18 @@ const createCottage = async (req, res, next) => {
     });
   } catch (err) {
     console.error(err);
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
     next(new AppErr("Failed to create cottage", 500));
   }
 };
+
 
 // Get all cottages (not soft-deleted)
 const getAllCottages = async (req, res, next) => {
