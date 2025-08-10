@@ -1,4 +1,4 @@
-const { Cottages, Cottage } = require("../Model/Cottageschema");
+const { Cottages, CottageUnit  } = require("../Model/Cottageschema");
 const Owner = require("../Model/Ownerschema");
 const AppErr = require("../Services/AppErr");
 
@@ -17,25 +17,25 @@ const createCottage = async (req, res, next) => {
 
     const { cottages: cottageUnits, ...cottageData } = req.body;
 
-    // Create a new Cottage document first
+    // 1️⃣ Create parent Cottage property (saved in 'cottages' collection)
     const newCottage = await Cottages.create({ ...cottageData });
 
-    // Now create CottageUnits (which will be in a separate collection)
+    // 2️⃣ Create each CottageUnit (saved in 'cottageunits' collection)
     const cottageUnitDocs = await Promise.all(
       cottageUnits.map(async (unit) => {
-        const unitDoc = await Cottage.create({
+        const unitDoc = await CottageUnit.create({
           ...unit,
-          Cottages: newCottage._id, // Reference to Cottage collection
+          Cottages: newCottage._id, // link to parent Cottage
         });
-        return unitDoc._id; // Save the CottageUnit's ID
+        return unitDoc._id;
       })
     );
 
-    // Save the CottageUnit IDs to the Cottage document
+    // 3️⃣ Link unit IDs to the parent Cottage
     newCottage.cottages = cottageUnitDocs;
     await newCottage.save();
 
-    // Update the Owner with the new Cottage reference
+    // 4️⃣ Update Owner to reference the new Cottage property
     await Owner.findByIdAndUpdate(
       newCottage.owner,
       {
@@ -49,7 +49,7 @@ const createCottage = async (req, res, next) => {
       { new: true }
     );
 
-    // Respond with success
+    // 5️⃣ Success response
     res.status(201).json({
       success: true,
       message: "Cottage property created successfully",
@@ -68,6 +68,7 @@ const createCottage = async (req, res, next) => {
     next(new AppErr("Failed to create cottage", 500));
   }
 };
+
 
 
 // Get all cottages (not soft-deleted)

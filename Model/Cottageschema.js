@@ -12,7 +12,7 @@ const CottageUnitSchema = new mongoose.Schema({
     enum: ["Single", "Couple", "Family"],
     required: true,
   },
-  totalcottage:Number,
+  totalcottage: Number,
   minCapacity: Number,
   maxCapacity: Number,
   pricePerNight: Number,
@@ -21,7 +21,7 @@ const CottageUnitSchema = new mongoose.Schema({
   amenities: [String],
   cottageimages: [String],
   deletedAt: { type: Date, default: null },
-});
+},{ collection: "cottageunits" });
 
 // Cottage Schema
 const CottageSchema = new mongoose.Schema({
@@ -130,9 +130,9 @@ const CottageSchema = new mongoose.Schema({
   ],
   cottages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cottage" }],
   deletedAt: { type: Date, default: null },
-});
+}, { collection: "cottages" });
 
 module.exports = {
   Cottages: mongoose.model("Cottages", CottageSchema),
-  Cottage: mongoose.model("Cottage", CottageUnitSchema),
+  CottageUnit: mongoose.model("CottageUnit", CottageUnitSchema),
 };
