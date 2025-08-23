@@ -1,86 +1,75 @@
 const mongoose = require("mongoose");
 
 const BookingSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Owner",
-    required: true,
-  },
   propertyType: {
     type: String,
-    enum: ["Villa", "Cottage", "Hotel", "Camping"],
+    enum: ["Villa", "Camping", "Hotel", "Cottage"],
     required: true,
   },
   propertyId: {
     type: mongoose.Schema.Types.ObjectId,
+    refPath: "propertyType",
     required: true,
-    refPath: "propertyType", // Dynamically reference Camping/Villa/Cottage/etc
   },
 
-  // For Camping Bookings: multiple tents with type & quantity
-  campingTents: [
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Owner",
+    required: true,
+  },
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+
+  checkIn: { type: Date, required: true },
+  checkOut: { type: Date, required: true },
+
+  guests: {
+    adults: { type: Number, default: 1 },
+    children: { type: Number, default: 0 },
+  },
+
+  // Booking Items → allows multiple unit types in one booking
+  items: [
     {
-      tent: {
+      unitType: {
+        type: String,
+        enum: ["Tent", "CottageUnit", "RoomUnit", "VillaUnit"],
+        required: true,
+      },
+      unitId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Tent",
         required: true,
+        refPath: "items.unitType",
       },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 1,
-      },
+      typeName: String, // e.g. "Family Tent", "Couple Cottage", "Deluxe Room"
+      quantity: { type: Number, required: true }, // how many booked
+      pricePerNight: { type: Number, required: true },
+      totalPrice: { type: Number, required: true }, // auto-calc (quantity * nights * pricePerNight)
     },
   ],
 
-  // Booking Date Range
-  checkInDate: {
-    type: Date,
-    required: true,
-  },
-  checkOutDate: {
-    type: Date,
-    required: true,
-  },
-
-  guests: {
-    adults: Number,
-    children: Number,
+  payment: {
+    amount: Number,
+    currency: { type: String, default: "INR" },
+    status: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    transactionId: String,
   },
 
-  priceDetails: {
-    subtotal: Number,
-    tax: Number,
-    discount: Number,
-    totalAmount: Number,
-    commission: Number,
-  },
-
-  paymentStatus: {
+  status: {
     type: String,
-    enum: ["pending", "paid", "failed"],
+    enum: ["pending", "confirmed", "cancelled"],
     default: "pending",
   },
 
-  bookingStatus: {
-    type: String,
-    enum: ["confirmed", "cancelled", "completed"],
-    default: "confirmed",
-  },
-
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  cancelledAt: {
-    type: Date,
-    default: null,
-  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("Booking", BookingSchema);

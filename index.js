@@ -14,6 +14,9 @@ const {CampingRouter} =require("./Route/Camping")
 const {CottageRouter} =require("./Route/Cottage")
 const {HotelRouter} =require("./Route/Hotel")
 const {AdminRouter} =require("./Route/Admin")
+const {UserRouter} =require("./Route/User")
+
+
 const cron = require('node-cron');
 const axios = require('axios'); 
 
@@ -52,6 +55,7 @@ app.use("/api/v1/Camping", CampingRouter);
 app.use("/api/v1/Cottage", CottageRouter);
 app.use("/api/v1/Hotel", HotelRouter);
 app.use("/api/v1/Admin", AdminRouter);
+app.use("/api/v1/User", UserRouter);
 
 
 

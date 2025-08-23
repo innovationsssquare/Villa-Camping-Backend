@@ -9,7 +9,7 @@ const TentSchema = new mongoose.Schema({
   },
   tentType: {
     type: String,
-    enum: ["Single", "Couple", "Family","luxury","treehouse"],
+    enum: ["Single", "Couple", "Family", "luxury", "treehouse"],
     required: true,
   },
   totaltents: { type: Number, required: true },
@@ -18,6 +18,12 @@ const TentSchema = new mongoose.Schema({
   extraPersonCharge: Number,
   isAvailable: { type: Boolean, default: true },
   pricePerNight: Number,
+  bookedDates: [
+    {
+      checkIn: Date,
+      checkOut: Date,
+    },
+  ],
   status: { type: String, enum: ["available", "booked"], default: "available" },
   amenities: [String],
   tentimages: [String],
@@ -122,7 +128,7 @@ const CampingSchema = new mongoose.Schema({
     enum: ["available", "fully_booked"],
     default: "available",
   },
-   seasonalPricing: [
+  seasonalPricing: [
     {
       startDate: Date,
       endDate: Date,
