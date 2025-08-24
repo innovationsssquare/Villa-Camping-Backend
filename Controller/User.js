@@ -124,12 +124,12 @@ const getAvailableProperties = async (req, res, next) => {
         break;
 
       case "Hotel":
-        const rooms = await RoomUnit.find({
+        const rooms = await Room.find({
           deletedAt: null,
           status: "available",
           ...(subtype ? { roomType: subtype } : {}), // ✅ filter at query level
         }).populate({
-          path: "hotel",
+          path: "Hotels",
           match: {
             category: categoryId,
             isapproved: "approved",
@@ -140,11 +140,11 @@ const getAvailableProperties = async (req, res, next) => {
 
         const hotelMap = {};
         rooms.forEach((room) => {
-          if (room.hotel && !isDateOverlap(room.bookedDates, checkIn, checkOut)) {
-            const hotelId = room.hotel._id.toString();
+          if (room.Hotels && !isDateOverlap(room.bookedDates, checkIn, checkOut)) {
+            const hotelId = room.Hotels._id.toString();
             if (!hotelMap[hotelId]) {
               hotelMap[hotelId] = {
-                ...room.hotel.toObject(),
+                ...room.Hotels.toObject(),
                 rooms: [],
               };
             }

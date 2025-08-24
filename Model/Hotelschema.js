@@ -3,9 +3,14 @@ const mongoose = require("mongoose");
 // Room Unit Schema (aligning with the Cottage Unit Schema)
 const RoomUnitSchema = new mongoose.Schema(
   {
+    Hotels: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hotels",
+      required: true,
+    },
     roomType: {
       type: String,
-      enum: ["Single", "Double", "family","deluxe"],
+      enum: ["Single", "Double", "family", "deluxe"],
       required: true,
     },
     roomNumber: {
