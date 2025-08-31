@@ -3,7 +3,7 @@ const AppErr = require("../Services/AppErr");
 const Villa = require("../Model/Villaschema");
 const Booking = require("../Model/Bookingschema");
 const Camping = require("../Model/Campingschema");
-const Cottage = require("../Model/Cottageschema");
+const Cottages = require("../Model/Cottageschema");
 const Hotel = require("../Model/Hotelschema");
 const Category = require("../Model/Categoryschema");
 const { Room } = require("../Model/Hotelschema");
@@ -82,7 +82,14 @@ const isDateOverlap = (bookings, checkIn, checkOut) => {
 
 const getAvailableProperties = async (req, res, next) => {
   try {
-    const { categoryId, checkIn, checkOut, subtype, page = 1, limit = 10 } = req.query;
+    const {
+      categoryId,
+      checkIn,
+      checkOut,
+      subtype,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     if (!categoryId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -140,7 +147,10 @@ const getAvailableProperties = async (req, res, next) => {
 
         const hotelMap = {};
         rooms.forEach((room) => {
-          if (room.Hotels && !isDateOverlap(room.bookedDates, checkIn, checkOut)) {
+          if (
+            room.Hotels &&
+            !isDateOverlap(room.bookedDates, checkIn, checkOut)
+          ) {
             const hotelId = room.Hotels._id.toString();
             if (!hotelMap[hotelId]) {
               hotelMap[hotelId] = {
@@ -180,7 +190,10 @@ const getAvailableProperties = async (req, res, next) => {
 
         const cottageMap = {};
         cottages.forEach((cottage) => {
-          if (cottage.Cottages && !isDateOverlap(cottage.bookedDates, checkIn, checkOut)) {
+          if (
+            cottage.Cottages &&
+            !isDateOverlap(cottage.bookedDates, checkIn, checkOut)
+          ) {
             const cottageId = cottage.Cottages._id.toString();
             if (!cottageMap[cottageId]) {
               cottageMap[cottageId] = {
@@ -220,7 +233,10 @@ const getAvailableProperties = async (req, res, next) => {
 
         const campingMap = {};
         tents.forEach((tent) => {
-          if (tent.camping && !isDateOverlap(tent.bookedDates, checkIn, checkOut)) {
+          if (
+            tent.camping &&
+            !isDateOverlap(tent.bookedDates, checkIn, checkOut)
+          ) {
             const campId = tent.camping._id.toString();
             if (!campingMap[campId]) {
               campingMap[campId] = {
@@ -277,9 +293,162 @@ const getAvailableProperties = async (req, res, next) => {
   }
 };
 
+const getPropertyById = async (req, res, next) => {
+  try {
+    const { categoryId, propertyId } = req.params;
+    if (!categoryId || !propertyId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId and propertyId are required",
+      });
+    }
+
+    // ✅ Find category
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    const type = category.name; // Villa, Hotel, Cottage, Camping
+    let property = null;
+    switch (type) {
+      case "Villa":
+        property = await Villa.findOne({
+          _id: propertyId,
+          category: categoryId,
+          isapproved: "approved",
+          isLive: true,
+          deletedAt: null,
+        });
+        break;
+
+      case "Hotel":
+        const rooms = await Room.find({
+          Hotels: propertyId,
+          deletedAt: null,
+        }).populate({
+          path: "Hotels",
+          match: {
+            _id: propertyId,
+            category: categoryId,
+            isapproved: "approved",
+            isLive: true,
+            deletedAt: null,
+          },
+        });
+
+        if (rooms.length > 0 && rooms[0].Hotels) {
+          property = {
+            ...rooms[0].Hotels.toObject(),
+            rooms: rooms.map((room) => ({
+              _id: room._id,
+              subtype: room.roomType,
+              totalRooms: room.totalRooms,
+              minCapacity: room.minCapacity,
+              maxCapacity: room.maxCapacity,
+              pricePerNight: room.pricePerNight,
+              amenities: room.amenities,
+              images: room.roomImages,
+            })),
+          };
+        }
+        break;
+
+      case "Cottage":
+        const cottageUnits = await CottageUnit.find({
+          Cottages: propertyId,
+          deletedAt: null,
+        }).populate({
+          path: "Cottages",
+          match: {
+            _id: propertyId,
+            category: categoryId,
+            isapproved: "approved",
+            isLive: true,
+            deletedAt: null,
+          },
+        });
+
+        if (cottageUnits.length > 0 && cottageUnits[0].Cottages) {
+          property = {
+            ...cottageUnits[0].Cottages.toObject(),
+            units: cottageUnits.map((unit) => ({
+              _id: unit._id,
+              subtype: unit.cottageType,
+              totalUnits: unit.totalcottage, 
+              minCapacity: unit.minCapacity,
+              maxCapacity: unit.maxCapacity,
+              pricePerNight: unit.pricePerNight,
+              amenities: unit.amenities,
+              images: unit.cottageimages,
+            })),
+          };
+        }
+        break; // ✅ important
+
+      case "Camping":
+        const tents = await Tent.find({
+          camping: propertyId,
+          deletedAt: null,
+        }).populate({
+          path: "camping",
+          match: {
+            _id: propertyId,
+            category: categoryId,
+            isapproved: "approved",
+            isLive: true,
+            deletedAt: null,
+          },
+        });
+
+        if (tents.length > 0 && tents[0].camping) {
+          property = {
+            ...tents[0].camping.toObject(),
+            tents: tents.map((tent) => ({
+              _id: tent._id,
+              subtype: tent.tentType,
+              totalTents: tent.totaltents,
+              minCapacity: tent.minCapacity,
+              maxCapacity: tent.maxCapacity,
+              pricePerNight: tent.pricePerNight,
+              amenities: tent.amenities,
+              images: tent.tentimages,
+            })),
+          };
+        }
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid property type",
+        });
+    }
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: property,
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
 module.exports = {
   loginOrRegisterUser,
   updateUser,
   getUserById,
   getAvailableProperties,
+  getPropertyById,
 };

@@ -22,7 +22,13 @@ const BookingSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-
+  customerDetails: {
+    firstName: { type: String, required: true },
+    lastName: { type: String },
+    mobile: { type: String, required: true },
+    email: { type: String, required: true },
+    city: { type: String },
+  },
   checkIn: { type: Date, required: true },
   checkOut: { type: Date, required: true },
 
@@ -31,7 +37,6 @@ const BookingSchema = new mongoose.Schema({
     children: { type: Number, default: 0 },
   },
 
-  // Booking Items → allows multiple unit types in one booking
   items: [
     {
       unitType: {
@@ -44,10 +49,10 @@ const BookingSchema = new mongoose.Schema({
         required: true,
         refPath: "items.unitType",
       },
-      typeName: String, // e.g. "Family Tent", "Couple Cottage", "Deluxe Room"
-      quantity: { type: Number, required: true }, // how many booked
+      typeName: String,
+      quantity: { type: Number, required: true },
       pricePerNight: { type: Number, required: true },
-      totalPrice: { type: Number, required: true }, // auto-calc (quantity * nights * pricePerNight)
+      totalPrice: { type: Number, required: true },
     },
   ],
 
