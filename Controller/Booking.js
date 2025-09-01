@@ -25,16 +25,16 @@ const createBooking = async (req, res, next) => {
       paymentAmount,
     } = req.body;
 
-    if (!propertyType || !propertyId || !ownerId || !customerId || !checkIn || !checkOut || !items) {
+    if (!propertyType || !propertyId || !ownerId || !customerId || !checkIn || !checkOut ) {
       return next(new AppErr("Missing required fields", 400));
     }
 
     // Calculate total amount
-    const totalAmount = items.reduce((sum, i) => sum + i.totalPrice, 0);
+    // const totalAmount = items.reduce((sum, i) => sum + i.totalPrice, 0);
 
     // Create Razorpay order
     const order = await razorpay.orders.create({
-      amount: totalAmount * 100, // paise
+      amount: paymentAmount * 100, // paise
       currency: "INR",
       payment_capture: 1,
     });
@@ -51,7 +51,7 @@ const createBooking = async (req, res, next) => {
       guests,
       items,
       payment: {
-        amount: totalAmount,
+        amount: paymentAmount,
         currency: "INR",
         status: "pending",
         transactionId: order.id,
@@ -74,20 +74,20 @@ const createBooking = async (req, res, next) => {
 // Verify payment + confirm booking
 const verifyPaymentAndConfirm = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, bookingId } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bookingId) {
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !bookingId) {
       return next(new AppErr("Payment verification details missing", 400));
     }
 
     // Verify Razorpay signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(body.toString())
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
+    if (expectedSignature !== razorpaySignature) {
       return next(new AppErr("Invalid payment signature", 400));
     }
 
@@ -97,7 +97,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       {
         status: "confirmed",
         "payment.status": "paid",
-        "payment.transactionId": razorpay_payment_id,
+        "payment.transactionId": razorpayPaymentId,
       },
       { new: true }
     );
