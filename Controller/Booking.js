@@ -2,6 +2,10 @@ const Booking = require("../Model/Bookingschema");
 const AppErr = require("../Services/AppErr");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const Villa = require("../Model/Villaschema");
+const { Cottages, CottageUnit } = require("../Model/Cottageschema");
+const {Camping,Tent} = require("../Model/Campingschema");
+const {Hotels,Room} = require("../Model/Hotelschema");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -80,7 +84,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       return next(new AppErr("Payment verification details missing", 400));
     }
 
-    // Verify Razorpay signature
+    // ✅ Verify Razorpay signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -91,7 +95,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       return next(new AppErr("Invalid payment signature", 400));
     }
 
-    // Update booking
+    // ✅ Update booking
     const booking = await Booking.findByIdAndUpdate(
       bookingId,
       {
@@ -104,9 +108,54 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
 
     if (!booking) return next(new AppErr("Booking not found", 404));
 
+    const { propertyType, propertyId, checkIn, checkOut, items } = booking;
+
+    if (propertyType === "Villa") {
+      // Whole property booked
+      await Villa.findByIdAndUpdate(
+        propertyId,
+        { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+        { new: true }
+      );
+    } else {
+      // Loop through units in items array
+      for (const item of items) {
+        const { unitType, unitId } = item;
+
+        switch (unitType) {
+          case "Tent":
+            await Tent.findByIdAndUpdate(
+              unitId,
+              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              { new: true }
+            );
+            break;
+
+          case "CottageUnit":
+            await CottageUnit.findByIdAndUpdate(
+              unitId,
+              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              { new: true }
+            );
+            break;
+
+          case "RoomUnit":
+            await RoomUnit.findByIdAndUpdate(
+              unitId,
+              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              { new: true }
+            );
+            break;
+
+          default:
+            console.warn(`Unknown unit type: ${unitType}`);
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
-      message: "Payment verified, booking confirmed",
+      message: "Payment verified, booking confirmed and property updated",
       data: booking,
     });
   } catch (err) {
