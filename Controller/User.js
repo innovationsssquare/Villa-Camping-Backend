@@ -9,6 +9,7 @@ const Category = require("../Model/Categoryschema");
 const { Room } = require("../Model/Hotelschema");
 const { CottageUnit } = require("../Model/Cottageschema");
 const { Tent } = require("../Model/Campingschema");
+const moment = require("moment-timezone");
 
 // Login or Register
 const loginOrRegisterUser = async (req, res, next) => {
@@ -71,13 +72,45 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+const CHECKIN_HOUR = 14;   // 2:00 PM IST
+const CHECKOUT_HOUR = 11;  // 11 AM
+const CHECKOUT_MINUTE = 30; // 11:30 AM IST
+
 // Helper function → check date overlap
 const isDateOverlap = (bookings, checkIn, checkOut) => {
-  return bookings.some(
-    (b) =>
-      new Date(checkIn) < new Date(b.checkOut) &&
-      new Date(checkOut) > new Date(b.checkIn)
-  );
+  // Convert client input UTC → IST
+  let checkInIST = moment.utc(checkIn).tz("Asia/Kolkata").set({
+    hour: CHECKIN_HOUR,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+  let checkOutIST = moment.utc(checkOut).tz("Asia/Kolkata").set({
+    hour: CHECKOUT_HOUR,
+    minute: CHECKOUT_MINUTE,
+    second: 0,
+    millisecond: 0,
+  });
+
+  return bookings.some((b) => {
+    // Convert DB UTC → IST
+    let bookingCheckInIST = moment.utc(b.checkIn).tz("Asia/Kolkata").set({
+      hour: CHECKIN_HOUR,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+    let bookingCheckOutIST = moment.utc(b.checkOut).tz("Asia/Kolkata").set({
+      hour: CHECKOUT_HOUR,
+      minute: CHECKOUT_MINUTE,
+      second: 0,
+      millisecond: 0,
+    });
+
+    // ✅ Overlap check
+    // If new checkIn is exactly same as old checkOut → ALLOWED
+    return checkInIST.isBefore(bookingCheckOutIST) && checkOutIST.isAfter(bookingCheckInIST);
+  });
 };
 
 const getAvailableProperties = async (req, res, next) => {
