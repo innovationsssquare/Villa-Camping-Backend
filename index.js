@@ -16,6 +16,7 @@ const {HotelRouter} =require("./Route/Hotel")
 const {AdminRouter} =require("./Route/Admin")
 const {UserRouter} =require("./Route/User")
 const {BookingRouter} =require("./Route/Booking")
+const {LocationRouter} =require("./Route/Location")
 
 
 const cron = require('node-cron');
@@ -58,6 +59,7 @@ app.use("/api/v1/Hotel", HotelRouter);
 app.use("/api/v1/Admin", AdminRouter);
 app.use("/api/v1/User", UserRouter);
 app.use("/api/v1/Booking", BookingRouter);
+app.use("/api/v1/Location", LocationRouter);
 
 
 
