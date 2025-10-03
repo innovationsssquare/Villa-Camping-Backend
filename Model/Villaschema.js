@@ -30,6 +30,7 @@ const VillaSchema = new mongoose.Schema(
     },
     coordinates: { type: [Number], required: true },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+    nearbyattractions: [String],
     bhkType: {
       type: String,
       enum: ["1BHK", "2BHK", "3BHK", "4BHK"],
@@ -56,17 +57,18 @@ const VillaSchema = new mongoose.Schema(
       },
     ],
 
-    basePricePerNight: {
-      type: Number,
-      default: 0,
-    },
-
-    seasonalPricing: [
-      {
-        season: { type: String },
-        price: { type: Number },
+    pricing: {
+      weekdayPrice: {
+        type: Number,
+        required: true,
+        default: 0,
       },
-    ],
+      weekendPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+    },
 
     extraPersonCharge: {
       type: Number,
@@ -128,6 +130,7 @@ const VillaSchema = new mongoose.Schema(
     paymentTerms: [String],
     spaces: [
       {
+        image: { type: String },
         name: { type: String },
         description: { type: String },
         details: [String],
