@@ -67,17 +67,72 @@ const HotelSchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    location: {
+    address: {
       addressLine: { type: String },
       maplink: { type: String },
-      coordinates: { type: String },
       city: { type: String },
       area: { type: String },
     },
     amenities: [String],
+    coordinates: { type: [Number], required: true },
+    location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+    nearbyattractions: [String],
+    topamenities: [String],
     images: [String],
     reelVideo: { type: String },
     HotelRules: [String],
+    brochure: { type: String },
+    greatFor: [
+      {
+        type: String,
+        enum: [
+          "Mountain View",
+          "Pet-Friendly",
+          "Ideal for Families",
+          "Beachfront",
+          "Ideal for Groups",
+        ],
+      },
+    ],
+    highlights: [
+      {
+        title: { type: String },
+        description: { type: String },
+        image: { type: String },
+      },
+    ],
+    cancellationPolicy: [String],
+    paymentTerms: [String],
+
+    tags: [
+      {
+        type: String,
+        enum: ["popular", "trending", "new"],
+      },
+    ],
+    faqs: [
+      {
+        question: { type: String, required: true },
+        answer: { type: String, required: true },
+      },
+    ],
+    experiences: [
+      {
+        title: { type: String, required: true },
+        description: { type: String },
+        image: { type: String, required: true },
+        category: { type: String },
+        order: { type: Number, default: 0 },
+      },
+    ],
+    exploreStay: [
+      {
+        title: { type: String, required: true },
+        description: { type: String },
+        image: { type: String },
+        link: { type: String },
+      },
+    ],
     checkInTime: {
       type: String,
       default: "1 PM",
@@ -94,10 +149,7 @@ const HotelSchema = new mongoose.Schema(
       type: Number,
       default: 1000,
     },
-    cancellationPolicy: {
-      type: String,
-      default: "No refund on cancellations.",
-    },
+
     foodOptions: {
       type: String,
       default: "Homely made food available on request",
@@ -120,6 +172,8 @@ const HotelSchema = new mongoose.Schema(
         rating: { type: Number, required: true },
         comment: { type: String },
         images: [String],
+        isTopReview: { type: Boolean, default: false },
+        categories: [String],
         createdAt: { type: Date, default: Date.now },
       },
     ],
@@ -136,13 +190,18 @@ const HotelSchema = new mongoose.Schema(
       enum: ["available", "fully_booked"],
       default: "available",
     },
-    seasonalPricing: [
-      {
-        startDate: Date,
-        endDate: Date,
-        pricePerNight: Number,
+    pricing: {
+      weekdayPrice: {
+        type: Number,
+        required: true,
+        default: 0,
       },
-    ],
+      weekendPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+    },
     rooms: [
       {
         type: mongoose.Schema.Types.ObjectId,

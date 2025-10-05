@@ -94,6 +94,7 @@ const VillaSchema = new mongoose.Schema(
     },
 
     amenities: [String],
+    topamenities: [String],
 
     images: [String],
     reelVideo: { type: String },

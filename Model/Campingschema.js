@@ -50,15 +50,31 @@ const CampingSchema = new mongoose.Schema({
     type: String,
   },
 
-  location: {
+  address: {
     addressLine: { type: String },
     maplink: { type: String },
-    coordinates: { type: String },
     city: { type: String },
     area: { type: String },
   },
-  amenities: [String],
+  coordinates: { type: [Number], required: true },
+  location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
+  nearbyattractions: [String],
+  topamenities: [String],
 
+  amenities: [String],
+  brochure: { type: String },
+  greatFor: [
+    {
+      type: String,
+      enum: [
+        "Mountain View",
+        "Pet-Friendly",
+        "Ideal for Families",
+        "Beachfront",
+        "Ideal for Groups",
+      ],
+    },
+  ],
   images: [String],
   reelVideo: { type: String },
 
@@ -84,16 +100,50 @@ const CampingSchema = new mongoose.Schema({
     default: 1000,
   },
 
-  cancellationPolicy: {
-    type: String,
-    default: "No refund on cancellations.",
-  },
+  highlights: [
+    {
+      title: { type: String },
+      description: { type: String },
+      image: { type: String },
+    },
+  ],
+  cancellationPolicy: [String],
+  paymentTerms: [String],
 
   foodOptions: {
     type: String,
     default: "Homely made food available on request",
   },
+  tags: [
+    {
+      type: String,
+      enum: ["popular", "trending", "new"],
+    },
+  ],
+  faqs: [
+    {
+      question: { type: String, required: true },
+      answer: { type: String, required: true },
+    },
+  ],
+  experiences: [
+    {
+      title: { type: String, required: true },
+      description: { type: String },
+      image: { type: String, required: true },
+      category: { type: String },
+      order: { type: Number, default: 0 },
+    },
+  ],
 
+  exploreStay: [
+    {
+      title: { type: String, required: true },
+      description: { type: String },
+      image: { type: String },
+      link: { type: String },
+    },
+  ],
   isapproved: {
     type: String,
     enum: ["pending", "approved", "rejected"],
@@ -112,6 +162,8 @@ const CampingSchema = new mongoose.Schema({
       rating: { type: Number, required: true },
       comment: { type: String },
       images: [String],
+      isTopReview: { type: Boolean, default: false },
+      categories: [String],
       createdAt: { type: Date, default: Date.now },
     },
   ],
@@ -128,13 +180,18 @@ const CampingSchema = new mongoose.Schema({
     enum: ["available", "fully_booked"],
     default: "available",
   },
-  seasonalPricing: [
-    {
-      startDate: Date,
-      endDate: Date,
-      pricePerNight: Number,
+  pricing: {
+    weekdayPrice: {
+      type: Number,
+      required: true,
+      default: 0,
     },
-  ],
+    weekendPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
   tents: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tent" }],
   deletedAt: { type: Date, default: null },
 });
