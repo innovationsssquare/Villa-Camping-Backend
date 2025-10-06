@@ -24,7 +24,6 @@ const VillaSchema = new mongoose.Schema(
 
     address: {
       addressLine: { type: String },
-      maplink: { type: String },
       city: { type: String },
       area: { type: String },
     },
