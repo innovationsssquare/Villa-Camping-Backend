@@ -29,7 +29,12 @@ const VillaSchema = new mongoose.Schema(
     },
     coordinates: { type: [Number], required: true },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-    nearbyattractions: [String],
+    nearbyattractions: [
+      {
+        nearbylocation: { type: String },
+        distance: { type: String },
+      },
+    ],
     bhkType: {
       type: String,
       enum: ["1BHK", "2BHK", "3BHK", "4BHK"],
