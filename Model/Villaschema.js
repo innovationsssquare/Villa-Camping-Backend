@@ -148,8 +148,17 @@ const VillaSchema = new mongoose.Schema(
       },
     ],
     foodOptions: {
-      type: String,
-      default: "Homely made food available on request",
+      available: [
+        {
+          type: String,
+          enum: ["Breakfast", "Lunch", "High Tea", "Dinner"],
+          trim: true,
+        },
+      ],
+      default: [],
+      adultPrice: { type: Number, default: 0, min: 0 },
+      childPrice: { type: Number, default: 0, min: 0 },
+      note: { type: String, trim: true, default: "" },
     },
     faqs: [
       {
