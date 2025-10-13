@@ -27,7 +27,8 @@ const axios = require('axios');
 
 const { createServer } = require("http");
 const { Server }= require("socket.io");
-const {initSocket}=require("./Services/Socket")
+const {initSocket}=require("./Services/Socket");
+const { CouponRouter } = require("./Route/Coupon");
 
 
 const app = express();
@@ -60,6 +61,7 @@ app.use("/api/v1/Admin", AdminRouter);
 app.use("/api/v1/User", UserRouter);
 app.use("/api/v1/Booking", BookingRouter);
 app.use("/api/v1/Location", LocationRouter);
+app.use("/api/v1/Coupon", CouponRouter);
 
 
 

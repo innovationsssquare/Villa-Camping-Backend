@@ -151,7 +151,6 @@ const getAvailableProperties = async (req, res, next) => {
           isLive: true,
           deletedAt: null,
         });
-
         // filter out booked villas
         properties = properties.filter(
           (villa) => !isDateOverlap(villa.bookedDates, checkIn, checkOut)
