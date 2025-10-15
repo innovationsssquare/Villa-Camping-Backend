@@ -65,9 +65,7 @@ app.use("/api/v1/Coupon", CouponRouter);
 
 
 
-app.get('/keepalive', (req, res) => {
-  res.send('Server is alive!');
-});
+
 
 //--------------Not Found Route-------------------//
 app.get("*", (req, res, next) => {
@@ -78,15 +76,7 @@ app.get("*", (req, res, next) => {
 
 const PORT = process.env.PORT || 9100;
 
-// Setting up cron job to ping the server every 5 minutes
-cron.schedule('*/10 * * * *', async () => {
-  try {
-    await axios.get(`http://localhost:${PORT}/keepalive`);
-    console.log('Server is alive');
-  } catch (error) {
-    console.error('Error pinging server:', error);
-  }
-});
+
 
 
 //----------Global Error -----------//
