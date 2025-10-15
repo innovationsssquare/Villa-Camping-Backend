@@ -133,6 +133,8 @@ const VillaSchema = new mongoose.Schema(
     ],
     cancellationPolicy: [String],
     paymentTerms: [String],
+    kitchenUsePolicy: [String],
+    relocationPolicy: [String],
     spaces: [
       {
         image: { type: String },
