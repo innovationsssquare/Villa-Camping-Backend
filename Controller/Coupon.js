@@ -1,6 +1,6 @@
 const { validationResult } = require("express-validator");
 const CouponOffer = require("../Model/Couponschema"); // Assuming a Mongoose model
-const AppErr = require("../services/AppErr"); // Custom error handling utility
+const AppErr = require("../Services/AppErr"); // Custom error handling utility
 
 // Create a new coupon offer
 const CreateCouponOffer = async (req, res, next) => {
