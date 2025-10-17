@@ -69,7 +69,12 @@ const CampingSchema = new mongoose.Schema({
   },
   coordinates: { type: [Number], required: true },
   location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-  nearbyattractions: [String],
+   nearbyattractions: [
+      {
+        nearbylocation: { type: String },
+        distance: { type: String },
+      },
+    ],
   topamenities: [String],
 
   amenities: [String],
@@ -79,7 +84,7 @@ const CampingSchema = new mongoose.Schema({
       type: String,
       enum: [
         "Mountain View",
-        "Lake view",
+        "Lake View",
         "Pet-Friendly",
         "Ideal for Families",
         "Beachfront",
