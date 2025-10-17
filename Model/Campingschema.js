@@ -16,8 +16,19 @@ const TentSchema = new mongoose.Schema({
   minCapacity: Number,
   maxCapacity: Number,
   extraPersonCharge: Number,
+  pricing: {
+    weekdayPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    weekendPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
   isAvailable: { type: Boolean, default: true },
-  pricePerNight: Number,
   bookedDates: [
     {
       checkIn: Date,
@@ -100,20 +111,40 @@ const CampingSchema = new mongoose.Schema({
     default: 1000,
   },
 
-  highlights: [
-    {
-      title: { type: String },
-      description: { type: String },
-      image: { type: String },
-    },
-  ],
+  highlights: {
+    thingsToDo: [String],
+    servicesAndFacilities: [
+      {
+        title: { type: String, required: true },
+        description: { type: String, required: true }, 
+        time: { type: String }, 
+      },
+    ],
+    scheduleInfo: [
+      {
+        label: { type: String }, 
+        time: { type: String }, 
+        note: { type: String }, 
+      },
+    ],
+  },
   cancellationPolicy: [String],
   paymentTerms: [String],
 
-  foodOptions: {
-    type: String,
-    default: "Homely made food available on request",
+  meals: {
+    eveningSnacks: { type: String, default: "" },
+    bbq: {
+      available: { type: Boolean, default: false },
+      veg: { type: String, default: "" },
+      nonVeg: { type: String, default: "" },
+    },
+    dinner: {
+      veg: { type: String, default: "" },
+      nonVeg: { type: String, default: "" },
+    },
+    nextDayBreakfast: { type: String, default: "" },
   },
+
   tags: [
     {
       type: String,
