@@ -79,6 +79,7 @@ const CampingSchema = new mongoose.Schema({
       type: String,
       enum: [
         "Mountain View",
+        "Lake view",
         "Pet-Friendly",
         "Ideal for Families",
         "Beachfront",
