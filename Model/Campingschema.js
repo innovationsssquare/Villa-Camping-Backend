@@ -78,6 +78,8 @@ const CampingSchema = new mongoose.Schema({
   topamenities: [String],
 
   amenities: [String],
+  totaltents: { type: Number, required: true },
+  baths: { type: Number, required: true },
   brochure: { type: String },
   greatFor: [
     {

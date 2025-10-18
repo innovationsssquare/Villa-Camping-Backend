@@ -16,7 +16,18 @@ const CottageUnitSchema = new mongoose.Schema(
     totalcottage: Number,
     minCapacity: Number,
     maxCapacity: Number,
-    pricePerNight: Number,
+   pricing: {
+    weekdayPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    weekendPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
     bookedDates: [{ checkIn: Date, checkOut: Date }],
     status: {
       type: String,
@@ -53,10 +64,11 @@ const CottageSchema = new mongoose.Schema(
 
     address: {
       addressLine: { type: String },
-      maplink: { type: String },
       city: { type: String },
       area: { type: String },
     },
+    totalcottages: { type: Number, required: true },
+    baths: { type: Number, required: true },
     amenities: [String],
     coordinates: { type: [Number], required: true },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
