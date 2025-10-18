@@ -72,7 +72,12 @@ const CottageSchema = new mongoose.Schema(
     amenities: [String],
     coordinates: { type: [Number], required: true },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-    nearbyattractions: [String],
+    nearbyattractions: [
+      {
+        nearbylocation: { type: String },
+        distance: { type: String },
+      },
+    ],
     topamenities: [String],
     images: [String],
     reelVideo: { type: String },
