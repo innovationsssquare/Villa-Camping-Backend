@@ -16,18 +16,18 @@ const CottageUnitSchema = new mongoose.Schema(
     totalcottage: Number,
     minCapacity: Number,
     maxCapacity: Number,
-   pricing: {
-    weekdayPrice: {
-      type: Number,
-      required: true,
-      default: 0,
+    pricing: {
+      weekdayPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      weekendPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
     },
-    weekendPrice: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-  },
     bookedDates: [{ checkIn: Date, checkOut: Date }],
     status: {
       type: String,
@@ -82,6 +82,7 @@ const CottageSchema = new mongoose.Schema(
         type: String,
         enum: [
           "Mountain View",
+          "Lake View",
           "Pet-Friendly",
           "Ideal for Families",
           "Beachfront",
@@ -149,14 +150,21 @@ const CottageSchema = new mongoose.Schema(
       default: 1000,
     },
 
-    cancellationPolicy: {
-      type: String,
-      default: "No refund on cancellations.",
-    },
+    cancellationPolicy: [String],
+    paymentTerms: [String],
 
     foodOptions: {
-      type: String,
-      default: "Homely made food available on request",
+      available: [
+        {
+          type: String,
+          enum: ["Breakfast", "Lunch", "High Tea", "Dinner"],
+          trim: true,
+        },
+      ],
+      default: [],
+      adultPrice: { type: Number, default: 0, min: 0 },
+      childPrice: { type: Number, default: 0, min: 0 },
+      note: { type: String, trim: true, default: "" },
     },
 
     isapproved: {
