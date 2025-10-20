@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 // Room Unit Schema (aligning with the Cottage Unit Schema)
 const RoomUnitSchema = new mongoose.Schema(
   {
-    Hotel: {
+    hotel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hotels",
       required: true,
