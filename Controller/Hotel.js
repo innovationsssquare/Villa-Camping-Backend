@@ -25,7 +25,7 @@ const createHotel = async (req, res, next) => {
       rooms.map(async (room) => {
         const roomDoc = await Room.create({
           ...room,
-          hotel: newHotel._id,
+          hotels: newHotel._id,
         });
         return roomDoc._id;
       })
