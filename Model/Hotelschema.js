@@ -25,9 +25,17 @@ const RoomUnitSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    pricePerNight: {
-      type: Number,
-      required: true,
+    pricing: {
+      weekdayPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      weekendPrice: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
     },
     bookedDates: [
       {
