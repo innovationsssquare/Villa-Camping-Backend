@@ -168,7 +168,7 @@ const getAvailableProperties = async (req, res, next) => {
           status: "available",
           ...(subtype ? { roomType: subtype } : {}), // ✅ filter at query level
         }).populate({
-          path: "Hotels",
+          path: "hotel",
           match: {
             category: categoryId,
             isapproved: "approved",
@@ -180,13 +180,13 @@ const getAvailableProperties = async (req, res, next) => {
         const hotelMap = {};
         rooms.forEach((room) => {
           if (
-            room.Hotels &&
+            room.hotel &&
             !isDateOverlap(room.bookedDates, checkIn, checkOut)
           ) {
-            const hotelId = room.Hotels._id.toString();
+            const hotelId = room.hotel._id.toString();
             if (!hotelMap[hotelId]) {
               hotelMap[hotelId] = {
-                ...room.Hotels.toObject(),
+                ...room.hotel.toObject(),
                 rooms: [],
               };
             }
