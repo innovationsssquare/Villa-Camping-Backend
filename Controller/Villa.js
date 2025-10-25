@@ -1,6 +1,6 @@
 const Villa = require("../Model/Villaschema");
 const AppErr = require("../Services/AppErr");
-const Owner =require("../Model/Ownerschema")
+const Owner = require("../Model/Ownerschema");
 // Create a Villa
 const createVilla = async (req, res, next) => {
   try {
@@ -149,7 +149,6 @@ const getVillaByProperty = async (req, res, next) => {
   }
 };
 
-
 // Add a review to a villa and update average rating
 const addVillaReview = async (req, res, next) => {
   try {
@@ -157,7 +156,9 @@ const addVillaReview = async (req, res, next) => {
     const { userId, rating, comment, images } = req.body;
 
     if (!villaId || !userId || !rating) {
-      return next(new AppErr("Villa ID, User ID, and Rating are required", 400));
+      return next(
+        new AppErr("Villa ID, User ID, and Rating are required", 400)
+      );
     }
 
     const villa = await Villa.findById(villaId);
@@ -174,7 +175,10 @@ const addVillaReview = async (req, res, next) => {
     });
 
     // Recalculate average rating
-    const totalRatings = villa.reviews.reduce((sum, review) => sum + review.rating, 0);
+    const totalRatings = villa.reviews.reduce(
+      (sum, review) => sum + review.rating,
+      0
+    );
     const totalReviews = villa.reviews.length;
     villa.averageRating = totalRatings / totalReviews;
     villa.totalReviews = totalReviews;
@@ -199,21 +203,26 @@ const addVillaReview = async (req, res, next) => {
 const approveAndUpdateVilla = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, commission, isLive } = req.body; 
+    const { status, commission, isLive } = req.body;
 
     // Validate status
-    if (!['approved', 'rejected'].includes(status)) {
-      return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
+    if (!["approved", "rejected"].includes(status)) {
+      return next(
+        new AppErr(
+          'Invalid status value. Please use "approved" or "rejected".',
+          400
+        )
+      );
     }
 
     // Validate commission
-    if (commission && typeof commission !== 'number') {
-      return next(new AppErr('Commission should be a number', 400));
+    if (commission && typeof commission !== "number") {
+      return next(new AppErr("Commission should be a number", 400));
     }
 
     // Validate isLive
-    if (typeof isLive !== 'boolean') {
-      return next(new AppErr('isLive should be a boolean value', 400));
+    if (typeof isLive !== "boolean") {
+      return next(new AppErr("isLive should be a boolean value", 400));
     }
 
     // Update villa status, commission, and isLive
@@ -229,17 +238,58 @@ const approveAndUpdateVilla = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: `Villa has been ${status} and is now ${isLive ? 'live' : 'inactive'} with commission set.`,
+      message: `Villa has been ${status} and is now ${
+        isLive ? "live" : "inactive"
+      } with commission set.`,
       data: updatedVilla,
     });
   } catch (err) {
     console.error(err);
-    next(new AppErr("Failed to approve, update status, or add commission", 500));
+    next(
+      new AppErr("Failed to approve, update status, or add commission", 500)
+    );
   }
 };
 
+const updateVillaPricing = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { weekdayPrice, weekendPrice } = req.body;
 
+    if (weekdayPrice == null && weekendPrice == null) {
+      return next(
+        new AppErr(
+          "At least one price field (weekdayPrice or weekendPrice) is required",
+          400
+        )
+      );
+    }
 
+    const updatedVilla = await Villa.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      {
+        $set: {
+          ...(weekdayPrice != null && { "pricing.weekdayPrice": weekdayPrice }),
+          ...(weekendPrice != null && { "pricing.weekendPrice": weekendPrice }),
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedVilla) {
+      return next(new AppErr("Villa not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Villa pricing updated successfully",
+      data: updatedVilla.pricing,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to update villa pricing", 500));
+  }
+};
 
 module.exports = {
   createVilla,
@@ -249,5 +299,6 @@ module.exports = {
   softDeleteVilla,
   getVillaByProperty,
   addVillaReview,
-approveAndUpdateVilla
+  approveAndUpdateVilla,
+  updateVillaPricing,
 };

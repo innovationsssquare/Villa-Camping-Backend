@@ -232,6 +232,57 @@ const approveAndUpdateHotel = async (req, res, next) => {
   }
 };
 
+const updateHotelPricingByType = async (req, res, next) => {
+  try {
+    const { hotelId } = req.params;
+    const { roomType, weekdayPrice, weekendPrice } = req.body;
+
+    // 1️⃣ Validate input
+    if (!roomType) return next(new AppErr("roomType is required", 400));
+    if (weekdayPrice == null || weekendPrice == null)
+      return next(new AppErr("Both weekdayPrice and weekendPrice are required", 400));
+
+    // 2️⃣ Update all rooms of the given type within that hotel
+    const roomUpdateResult = await Room.updateMany(
+      { hotel: hotelId, roomType },
+      {
+        $set: {
+          "pricing.weekdayPrice": weekdayPrice,
+          "pricing.weekendPrice": weekendPrice,
+        },
+      }
+    );
+
+    // 3️⃣ If no rooms found for that type
+    if (roomUpdateResult.modifiedCount === 0) {
+      return next(new AppErr(`No rooms found for type: ${roomType}`, 404));
+    }
+
+    // 4️⃣ Also update hotel-level pricing for same roomType (optional business rule)
+    const hotel = await Hotels.findByIdAndUpdate(
+      hotelId,
+      {
+        $set: {
+          "pricing.weekdayPrice": weekdayPrice,
+          "pricing.weekendPrice": weekendPrice,
+        },
+      },
+      { new: true }
+    );
+
+    if (!hotel) return next(new AppErr("Hotel not found", 404));
+
+    res.status(200).json({
+      success: true,
+      message: `Pricing updated successfully for ${roomType} rooms.`,
+      hotel,
+    });
+  } catch (err) {
+    next(new AppErr(err.message, 500));
+  }
+};
+
+
 module.exports = {
   createHotel,
   getAllHotels,
@@ -240,5 +291,6 @@ module.exports = {
   softDeleteHotel,
   getHotelByProperty,
   addHotelReview,
-  approveAndUpdateHotel
+  approveAndUpdateHotel,
+  updateHotelPricingByType
 };

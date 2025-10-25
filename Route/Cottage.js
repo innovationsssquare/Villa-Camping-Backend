@@ -7,7 +7,8 @@ const {
   softDeleteCottage,
   getCottageByProperty,
   addCottageReview,
-  approveAndUpdateCottage
+  approveAndUpdateCottage,
+  updateCottagePricingByType
 } = require("../Controller/Cottage");
 
 const CottageRouter = express.Router();
@@ -20,5 +21,6 @@ CottageRouter.delete("/delete/cottage/:id", softDeleteCottage);
 CottageRouter.get("/get/cottages/property/:propertyId", getCottageByProperty);
 CottageRouter.post("/add/review/:cottageId", addCottageReview);
 CottageRouter.put("/approve-reject/:id", approveAndUpdateCottage);
+CottageRouter.put("/update-cottage-pricing/:cottageId", updateCottagePricingByType);
 
 module.exports = { CottageRouter };

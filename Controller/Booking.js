@@ -4,8 +4,8 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Villa = require("../Model/Villaschema");
 const { Cottages, CottageUnit } = require("../Model/Cottageschema");
-const {Camping,Tent} = require("../Model/Campingschema");
-const {Hotels,Room} = require("../Model/Hotelschema");
+const { Camping, Tent } = require("../Model/Campingschema");
+const { Hotels, Room } = require("../Model/Hotelschema");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -29,7 +29,14 @@ const createBooking = async (req, res, next) => {
       paymentAmount,
     } = req.body;
 
-    if (!propertyType || !propertyId || !ownerId || !customerId || !checkIn || !checkOut ) {
+    if (
+      !propertyType ||
+      !propertyId ||
+      !ownerId ||
+      !customerId ||
+      !checkIn ||
+      !checkOut
+    ) {
       return next(new AppErr("Missing required fields", 400));
     }
 
@@ -78,9 +85,15 @@ const createBooking = async (req, res, next) => {
 // Verify payment + confirm booking
 const verifyPaymentAndConfirm = async (req, res, next) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, bookingId } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, bookingId } =
+      req.body;
 
-    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !bookingId) {
+    if (
+      !razorpayOrderId ||
+      !razorpayPaymentId ||
+      !razorpaySignature ||
+      !bookingId
+    ) {
       return next(new AppErr("Payment verification details missing", 400));
     }
 
@@ -126,7 +139,10 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
           case "Tent":
             await Tent.findByIdAndUpdate(
               unitId,
-              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              {
+                $push: { bookedDates: { checkIn, checkOut } },
+                status: "booked",
+              },
               { new: true }
             );
             break;
@@ -134,15 +150,21 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
           case "CottageUnit":
             await CottageUnit.findByIdAndUpdate(
               unitId,
-              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              {
+                $push: { bookedDates: { checkIn, checkOut } },
+                status: "booked",
+              },
               { new: true }
             );
             break;
 
           case "RoomUnit":
-            await RoomUnit.findByIdAndUpdate(
+            await Room.findByIdAndUpdate(
               unitId,
-              { $push: { bookedDates: { checkIn, checkOut } }, status: "booked" },
+              {
+                $push: { bookedDates: { checkIn, checkOut } },
+                status: "booked",
+              },
               { new: true }
             );
             break;
@@ -168,7 +190,9 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
 const getBookingById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id)
+      .populate("ownerId", "name email")
+      .populate("customerId", "name email");
 
     if (!booking) return next(new AppErr("Booking not found", 404));
 
@@ -179,13 +203,123 @@ const getBookingById = async (req, res, next) => {
   }
 };
 
+// ✅ Get all bookings (with filters, pagination, sorting)
+const getAllBookings = async (req, res, next) => {
+  try {
+    const {
+      bookingId,
+      ownerId,
+      customerId,
+      status,
+      startDate,
+      endDate,
+      propertyType,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const query = {};
+
+    if (bookingId) query._id = bookingId;
+    if (ownerId) query.ownerId = ownerId;
+    if (customerId) query.customerId = customerId;
+    if (status) query.status = status;
+    if (propertyType) query.propertyType = propertyType;
+
+    if (startDate && endDate) {
+      query.checkIn = { $gte: new Date(startDate) };
+      query.checkOut = { $lte: new Date(endDate) };
+    } else if (startDate) {
+      query.checkIn = { $gte: new Date(startDate) };
+    } else if (endDate) {
+      query.checkOut = { $lte: new Date(endDate) };
+    }
+
+    const currentPage = parseInt(page);
+    const perPage = parseInt(limit);
+    const skip = (currentPage - 1) * perPage;
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query)
+        .populate("ownerId", "name email")
+        .populate("customerId", "name email")
+        .populate({ path: "propertyId", select: "name location" })
+        .populate({
+          path: "items.unitId",
+          select: "roomNumber tentName villaName price",
+        })
+        .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+        .skip(skip)
+        .limit(perPage),
+      Booking.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(total / perPage);
+
+    res.status(200).json({
+      success: true,
+      data: bookings,
+      pagination: {
+        total,
+        page: currentPage,
+        totalPages,
+        limit: perPage,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to fetch bookings", 500));
+  }
+};
+
 // Get bookings by customer
 const getBookingsByCustomer = async (req, res, next) => {
   try {
     const { customerId } = req.params;
-    const bookings = await Booking.find({ customerId });
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
 
-    res.status(200).json({ success: true, data: bookings });
+    if (!customerId) return next(new AppErr("Customer ID is required", 400));
+
+    const currentPage = parseInt(page);
+    const perPage = parseInt(limit);
+    const skip = (currentPage - 1) * perPage;
+
+    const query = { customerId };
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query)
+        .populate("ownerId", "name email")
+        .populate("customerId", "name email")
+        .populate({ path: "propertyId", select: "name location" })
+        .populate({
+          path: "items.unitId",
+          select: "roomNumber tentName villaName price",
+        })
+        .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+        .skip(skip)
+        .limit(perPage),
+      Booking.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(total / perPage);
+
+    res.status(200).json({
+      success: true,
+      data: bookings,
+      pagination: {
+        total,
+        page: currentPage,
+        totalPages,
+        limit: perPage,
+      },
+    });
   } catch (err) {
     console.error(err);
     next(new AppErr("Failed to fetch customer bookings", 500));
@@ -193,12 +327,52 @@ const getBookingsByCustomer = async (req, res, next) => {
 };
 
 // Get bookings by owner
+// ✅ Get bookings by owner (with pagination)
 const getBookingsByOwner = async (req, res, next) => {
   try {
     const { ownerId } = req.params;
-    const bookings = await Booking.find({ ownerId });
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
 
-    res.status(200).json({ success: true, data: bookings });
+    if (!ownerId) return next(new AppErr("Owner ID is required", 400));
+
+    const currentPage = parseInt(page);
+    const perPage = parseInt(limit);
+    const skip = (currentPage - 1) * perPage;
+
+    const query = { ownerId };
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query)
+        .populate("ownerId", "name email")
+        .populate("customerId", "name email")
+        .populate({ path: "propertyId", select: "name location" })
+        .populate({
+          path: "items.unitId",
+          select: "roomNumber tentName villaName price",
+        })
+        .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+        .skip(skip)
+        .limit(perPage),
+      Booking.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(total / perPage);
+
+    res.status(200).json({
+      success: true,
+      data: bookings,
+      pagination: {
+        total,
+        page: currentPage,
+        totalPages,
+        limit: perPage,
+      },
+    });
   } catch (err) {
     console.error(err);
     next(new AppErr("Failed to fetch owner bookings", 500));
@@ -235,4 +409,5 @@ module.exports = {
   getBookingsByCustomer,
   getBookingsByOwner,
   cancelBooking,
+  getAllBookings,
 };

@@ -237,6 +237,76 @@ const approveAndUpdateCamping = async (req, res, next) => {
   }
 };
 
+
+const updateCampingTentTypePricing = async (req, res, next) => {
+  try {
+    const { campingId } = req.params;
+    const { tentType, weekdayPrice, weekendPrice } = req.body;
+
+    if (!tentType) {
+      return next(new AppErr("Tent type is required", 400));
+    }
+
+    if (weekdayPrice == null && weekendPrice == null) {
+      return next(
+        new AppErr("At least one price field (weekdayPrice or weekendPrice) is required", 400)
+      );
+    }
+
+    // --- 1️⃣ Update Camping Pricing ---
+    const campingUpdateFields = {};
+    if (weekdayPrice != null) campingUpdateFields["pricing.weekdayPrice"] = weekdayPrice;
+    if (weekendPrice != null) campingUpdateFields["pricing.weekendPrice"] = weekendPrice;
+
+    const updatedCamping = await Camping.findOneAndUpdate(
+      { _id: campingId, deletedAt: null },
+      { $set: campingUpdateFields },
+      { new: true }
+    );
+
+    if (!updatedCamping) {
+      return next(new AppErr("Camping not found", 404));
+    }
+
+    // --- 2️⃣ Update All Tents of the Given Type ---
+    const tentUpdateFields = {};
+    if (weekdayPrice != null) tentUpdateFields["pricing.weekdayPrice"] = weekdayPrice;
+    if (weekendPrice != null) tentUpdateFields["pricing.weekendPrice"] = weekendPrice;
+
+    const result = await Tent.updateMany(
+      { camping: campingId, tentType, deletedAt: null },
+      { $set: tentUpdateFields }
+    );
+
+    if (result.matchedCount === 0) {
+      return next(
+        new AppErr(`No tents found for type "${tentType}" in this camping`, 404)
+      );
+    }
+
+    // --- 3️⃣ Get Updated Tent Records ---
+    const updatedTents = await Tent.find({
+      camping: campingId,
+      tentType,
+      deletedAt: null,
+    }).select("tentType pricing");
+
+    res.status(200).json({
+      success: true,
+      message: `Pricing updated for camping and all "${tentType}" tents`,
+      data: {
+        campingPricing: updatedCamping.pricing,
+        tentType,
+        updatedTents,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to update camping and tent type pricing", 500));
+  }
+};
+
+
 module.exports = {
   createCamping,
   getAllCampings,
@@ -245,5 +315,6 @@ module.exports = {
   softDeleteCamping,
   getCampingByProperty,
   addCampingReview,
-  approveAndUpdateCamping
+  approveAndUpdateCamping,
+  updateCampingTentTypePricing
 };

@@ -250,6 +250,37 @@ const approveAndUpdateCottage = async (req, res, next) => {
 };
 
 
+const updateCottagePricingByType = async (req, res, next) => {
+  try {
+    const { cottageId } = req.params;
+    const { cottageType, weekdayPrice, weekendPrice } = req.body;
+
+    if (!cottageType) return next(new AppErr("cottageType is required", 400));
+
+    const result = await CottageUnit.updateMany(
+      { Cottages: cottageId, cottageType },
+      {
+        $set: {
+          "pricing.weekdayPrice": weekdayPrice,
+          "pricing.weekendPrice": weekendPrice,
+        },
+      }
+    );
+
+    if (result.modifiedCount === 0)
+      return next(
+        new AppErr(`No cottages found for type: ${cottageType}`, 404)
+      );
+
+    res.status(200).json({
+      success: true,
+      message: `Pricing updated successfully for ${cottageType} cottages.`,
+    });
+  } catch (err) {
+    next(new AppErr(err.message, 500));
+  }
+};
+
 module.exports = {
   createCottage,
   getAllCottages,
@@ -258,5 +289,6 @@ module.exports = {
   softDeleteCottage,
   getCottageByProperty,
   addCottageReview,
-  approveAndUpdateCottage
+  approveAndUpdateCottage,
+  updateCottagePricingByType
 };
