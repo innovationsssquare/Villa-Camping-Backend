@@ -15,7 +15,6 @@ const CreateCouponOffer = async (req, res, next) => {
       description,
       discountAmount,
       discountType,
-      validFrom,
       validUntil,
       isActive,
       usageLimit,
