@@ -285,6 +285,34 @@ const ApplyCoupon = async (req, res, next) => {
   }
 };
 
+
+// Get all coupons by property ID
+const GetCouponsByProperty = async (req, res, next) => {
+  try {
+    const { propertyId } = req.params;
+
+    // Find all coupons linked to the given property
+    const coupons = await CouponOffer.find({ property: propertyId });
+
+    // If no coupons found
+    if (!coupons || coupons.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "No coupons found for this property",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        coupons,
+      },
+    });
+  } catch (err) {
+    next(new AppErr("Failed to fetch coupons by property", 500, err.message));
+  }
+};
+
 module.exports = {
   CreateCouponOffer,
   GetCouponById,
@@ -293,4 +321,5 @@ module.exports = {
   DeleteCoupon,
   ApplyCoupon,
   GetAllCouponsbyoffer,
+  GetCouponsByProperty
 };

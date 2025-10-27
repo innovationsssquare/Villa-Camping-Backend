@@ -7,7 +7,8 @@ const {
   UpdateCoupon,
   DeleteCoupon,
   ApplyCoupon,
-  GetAllCouponsbyoffer
+  GetAllCouponsbyoffer,
+  GetCouponsByProperty
 } = require('../Controller/Coupon'); // Using the same controller for both Coupon and CouponOffer
 
 const CouponRouter = express.Router();
@@ -16,10 +17,7 @@ const couponValidationRules = [
   body('code')
     .isString().withMessage('Coupon code must be a string')
     .notEmpty().withMessage('Coupon code is required'),
-  body('validFrom')
-    .isISO8601().toDate().withMessage('Valid from must be a valid date in ISO8601 format'),
-  body('validUntil')
-    .isISO8601().toDate().withMessage('Valid until must be a valid date in ISO8601 format'),
+
   body('usageLimit')
     .isInt({ min: 1 }).withMessage('Usage limit must be an integer greater than 0'),
   body('user')
@@ -32,7 +30,6 @@ const couponValidationRules = [
 
 CouponRouter.post(
   '/CreateCoupon',
-  couponValidationRules,
   CreateCouponOffer
 );
 
@@ -74,6 +71,8 @@ CouponRouter.post(
   ],
   ApplyCoupon
 );
+
+CouponRouter.get("/property/:propertyId", GetCouponsByProperty);
 
 // Validate Coupon or Coupon Offer by Code
 // CouponRouter.get(
