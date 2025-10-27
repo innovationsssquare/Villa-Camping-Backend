@@ -13,20 +13,6 @@ const {
 
 const CouponRouter = express.Router();
 
-const couponValidationRules = [
-  body('code')
-    .isString().withMessage('Coupon code must be a string')
-    .notEmpty().withMessage('Coupon code is required'),
-
-  body('usageLimit')
-    .isInt({ min: 1 }).withMessage('Usage limit must be an integer greater than 0'),
-  body('user')
-    .optional().isMongoId().withMessage('User ID must be a valid MongoDB Object ID'),
-  body('deviceId')
-    .optional().isString().withMessage('Device ID must be a string'),
-  body('maxLimit')
-    .optional().isInt({ min: 1 }).withMessage('Max limit must be a positive integer'),
-];
 
 CouponRouter.post(
   '/CreateCoupon',
@@ -52,7 +38,6 @@ CouponRouter.put(
   '/UpdateCoupon/:id',
   [
     param('id').isMongoId().withMessage('Invalid coupon ID'),
-    ...couponValidationRules
   ],
   UpdateCoupon
 );
