@@ -5,15 +5,7 @@ const AppErr = require("../Services/AppErr"); // Custom error handling utility
 // Create a new coupon offer
 const CreateCouponOffer = async (req, res, next) => {
   try {
-    // Validate incoming request data
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation errors",
-        errors: errors.array(),
-      });
-    }
+   
 
     // Destructure the request body to get the necessary fields
     const {
