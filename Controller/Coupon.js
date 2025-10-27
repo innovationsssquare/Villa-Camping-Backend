@@ -3,11 +3,71 @@ const CouponOffer = require("../Model/Couponschema"); // Assuming a Mongoose mod
 const AppErr = require("../Services/AppErr"); // Custom error handling utility
 
 // Create a new coupon offer
-const CreateCouponOffer = async (req, res, next) => {
-  try {
+// const CreateCouponOffer = async (req, res, next) => {
+//   try {
    
 
-    // Destructure the request body to get the necessary fields
+//     // Destructure the request body to get the necessary fields
+//     const {
+//       code,
+//       type,
+//       title,
+//       description,
+//       discountAmount,
+//       discountType,
+//       validUntil,
+//       isActive,
+//       usageLimit,
+//       userLimit,
+//       propertyTypes,
+//       property,
+//       createdBy,
+//       owner,
+//     } = req.body;
+
+//     // Check if the coupon/offer already exists
+//     const existingCoupon = await CouponOffer.findOne({ code });
+//     if (existingCoupon) {
+//       return res.status(400).json({
+//         status: false,
+//         message: "Coupon code already exists",
+//       });
+//     }
+
+//     // Create a new coupon offer
+//     const newCouponOffer = await CouponOffer.create({
+//       code,
+//       type,
+//       title,
+//       description,
+//       discount: {
+//         amount: discountAmount,
+//         type: discountType,
+//       },
+//       validTill: validUntil,
+//       isActive,
+//       usageLimit,
+//       userLimit,
+//       propertyTypes,
+//       property,
+//       createdBy,
+//       owner,
+//     });
+
+//     // Return success response
+//     res.status(201).json({
+//       status: "success",
+//       data: {
+//         couponOffer: newCouponOffer,
+//       },
+//     });
+//   } catch (err) {
+//     next(new AppErr("Failed to create coupon offer", 500, err.message));
+//   }
+// };
+
+const CreateCouponOffer = async (req, res, next) => {
+  try {
     const {
       code,
       type,
@@ -15,7 +75,7 @@ const CreateCouponOffer = async (req, res, next) => {
       description,
       discountAmount,
       discountType,
-      validUntil,
+      validTill,
       isActive,
       usageLimit,
       userLimit,
@@ -25,7 +85,10 @@ const CreateCouponOffer = async (req, res, next) => {
       owner,
     } = req.body;
 
-    // Check if the coupon/offer already exists
+    // Debug: Log the incoming data
+    console.log("Incoming Coupon Data:", req.body);
+
+    // Check if coupon exists
     const existingCoupon = await CouponOffer.findOne({ code });
     if (existingCoupon) {
       return res.status(400).json({
@@ -34,7 +97,7 @@ const CreateCouponOffer = async (req, res, next) => {
       });
     }
 
-    // Create a new coupon offer
+    // Create coupon
     const newCouponOffer = await CouponOffer.create({
       code,
       type,
@@ -44,7 +107,7 @@ const CreateCouponOffer = async (req, res, next) => {
         amount: discountAmount,
         type: discountType,
       },
-      validTill: validUntil,
+      validTill,
       isActive,
       usageLimit,
       userLimit,
@@ -54,17 +117,17 @@ const CreateCouponOffer = async (req, res, next) => {
       owner,
     });
 
-    // Return success response
-    res.status(201).json({
-      status: "success",
-      data: {
-        couponOffer: newCouponOffer,
-      },
+    return res.status(201).json({
+      status: true,
+      message: "Coupon created successfully",
+      data: newCouponOffer,
     });
   } catch (err) {
+    console.log("CreateCouponOffer ERROR:", err); // 👈 Add this line
     next(new AppErr("Failed to create coupon offer", 500, err.message));
   }
 };
+
 
 // Get a coupon by ID
 const GetCouponById = async (req, res, next) => {
