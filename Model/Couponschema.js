@@ -23,13 +23,12 @@ const CouponOfferSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: false }, // Whether the coupon or offer is active
     usageLimit: { type: Number, default: 20 }, // How many times the coupon/offer can be used
     userLimit: { type: Number, default: 1 }, // Limit per user
-    propertyTypes: [
-      {
-        type: String,
-        enum: ["villa", "cottage", "camping", "hotel"],
-        required: false,
-      },
-    ], // Property types applicable for admin offers, optional for property owner coupons
+    propertyTypes: {
+      type: String,
+      enum: ["villa", "cottage", "camping", "hotel"],
+      required: false,
+    },
+   // Property types applicable for admin offers, optional for property owner coupons
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
