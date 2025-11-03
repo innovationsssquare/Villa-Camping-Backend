@@ -807,6 +807,7 @@ const getBookingsByOwner = async (req, res, next) => {
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
+    console.log(req.query)
 
     if (!ownerId) return next(new AppErr("Owner ID is required", 400));
 
