@@ -28,7 +28,7 @@ const CouponOfferSchema = new mongoose.Schema(
       enum: ["villa", "cottage", "camping", "hotel"],
       required: false,
     },
-   // Property types applicable for admin offers, optional for property owner coupons
+    // Property types applicable for admin offers, optional for property owner coupons
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
