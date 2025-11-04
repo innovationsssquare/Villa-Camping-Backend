@@ -1,5 +1,5 @@
 const Booking = require("../Model/Bookingschema");
-const Payout = require("../Model/Payoutschema");
+const Payout = require("../Model/PayoutSchema");
 const CouponOffer = require("../Model/Couponschema");
 const Owner = require("../Model/Ownerschema");
 const AppErr = require("../Services/AppErr");
