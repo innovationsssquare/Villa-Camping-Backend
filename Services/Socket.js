@@ -1,4 +1,3 @@
-// socket.js
 const socketIO = require("socket.io");
 
 let io;
@@ -6,7 +5,7 @@ let io;
 function initSocket(server) {
   io = socketIO(server, {
     cors: {
-      origin: "https://www.thetheatrethrills.com", // Replace with your frontend URL in production
+      origin: "*",
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       credentials: true,
     },
@@ -14,9 +13,21 @@ function initSocket(server) {
 
   io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);
-    socket.emit('hello', 'Welcome to the server!');
 
+    // Example hello/test events
+    socket.emit("hello", "Welcome to the server!");
     socket.emit("test", { message: "You are connected!" });
+
+    // 🔹 Join room by owner/customer IDs
+    socket.on("join_owner_room", (ownerId) => {
+      socket.join(`owner_${ownerId}`);
+      console.log(`✅ Owner joined room: owner_${ownerId}`);
+    });
+
+    socket.on("join_customer_room", (customerId) => {
+      socket.join(`customer_${customerId}`);
+      console.log(`✅ Customer joined room: customer_${customerId}`);
+    });
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
@@ -27,9 +38,7 @@ function initSocket(server) {
 }
 
 function getSocketIO() {
-  if (!io) {
-    throw new Error("Socket.io is not initialized!");
-  }
+  if (!io) throw new Error("Socket.io not initialized!");
   return io;
 }
 

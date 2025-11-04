@@ -9,6 +9,7 @@ const Villa = require("../Model/Villaschema");
 const { Cottages, CottageUnit } = require("../Model/Cottageschema");
 const { Camping, Tent } = require("../Model/Campingschema");
 const { Hotels, Room } = require("../Model/Hotelschema");
+const { getSocketIO } = require("../Services/Socket");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -52,9 +53,7 @@ const validateAndApplyCoupon = async (
   });
 
   if (userUsageCount >= coupon.userLimit) {
-    throw new Error(
-      `You can only use this coupon ${coupon.userLimit} time(s)`
-    );
+    throw new Error(`You can only use this coupon ${coupon.userLimit} time(s)`);
   }
 
   // Check device limit (if deviceId provided)
@@ -370,6 +369,12 @@ const createBooking = async (req, res, next) => {
       deviceId,
     });
 
+    const io = getSocketIO();
+    io.to(`owner_${booking.ownerId}`).emit("booking_created", {
+      message: "New booking created",
+      booking,
+    });
+
     res.status(201).json({
       success: true,
       message: "Booking initiated. Complete payment to confirm.",
@@ -461,10 +466,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
         updateData.$addToSet = { devicesUsed: booking.deviceId };
       }
 
-      await CouponOffer.findByIdAndUpdate(
-        booking.coupon.couponId,
-        updateData
-      );
+      await CouponOffer.findByIdAndUpdate(booking.coupon.couponId, updateData);
     }
 
     // Update property/unit booked dates only if fully paid
@@ -513,6 +515,17 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
         console.error("Payout creation failed:", err)
       );
     }
+
+
+      const io = getSocketIO();
+    io.to(`owner_${booking.ownerId}`).emit("booking_updated", {
+      message:
+        booking.paymentStatus === "fully_paid"
+          ? "Booking confirmed successfully"
+          : "Partial payment received",
+      booking,
+    });
+
 
     res.status(200).json({
       success: true,
@@ -807,7 +820,7 @@ const getBookingsByOwner = async (req, res, next) => {
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
-    console.log(req.query)
+    console.log(req.query);
 
     if (!ownerId) return next(new AppErr("Owner ID is required", 400));
 
@@ -908,10 +921,7 @@ const cancelBooking = async (req, res, next) => {
         updateData.$pull = { devicesUsed: booking.deviceId };
       }
 
-      await CouponOffer.findByIdAndUpdate(
-        booking.coupon.couponId,
-        updateData
-      );
+      await CouponOffer.findByIdAndUpdate(booking.coupon.couponId, updateData);
     }
 
     // Update payout if exists
