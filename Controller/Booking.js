@@ -10,6 +10,7 @@ const { Cottages, CottageUnit } = require("../Model/Cottageschema");
 const { Camping, Tent } = require("../Model/Campingschema");
 const { Hotels, Room } = require("../Model/Hotelschema");
 const { getSocketIO } = require("../Services/Socket");
+const Notification = require("../Model/Notificationschema");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -369,10 +370,47 @@ const createBooking = async (req, res, next) => {
       deviceId,
     });
 
+    const notification = await Notification.create({
+      recipientType: "owner",
+      recipientId: booking.ownerId,
+      type: "booking_created",
+      category: "booking",
+      title: "New Booking Received",
+      message: `A new booking has been made by ${booking.customerDetails.firstName} ${booking.customerDetails.lastName}.`,
+      bookingId: booking._id,
+      propertyId: booking.propertyId,
+      priority: "high",
+      channels: {
+        inApp: true,
+        email: { sent: false },
+        push: { sent: false },
+      },
+      data: {
+        bookingId: booking._id,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        customerName: `${booking.customerDetails.firstName} ${booking.customerDetails.lastName}`,
+        totalAmount: booking.pricing.totalAmount,
+        propertyType: booking.propertyType,
+      },
+      metadata: {
+        sentByModel: "System",
+        deviceInfo: { deviceId: booking.deviceId, platform: "web" },
+      },
+    });
+
     const io = getSocketIO();
     io.to(`owner_${booking.ownerId}`).emit("booking_created", {
       message: "New booking created",
       booking,
+    });
+
+    io.to(`owner_${booking.ownerId}`).emit("notification:new", {
+      type: "booking_created",
+      title: notification.title,
+      message: notification.message,
+      booking: booking,
+      notification,
     });
 
     res.status(201).json({
@@ -401,7 +439,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       razorpayPaymentId,
       razorpaySignature,
       bookingId,
-      gatewayFee = 0, // Gateway fee if available
+      gatewayFee = 0,
     } = req.body;
 
     if (
@@ -450,7 +488,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       booking.status = "confirmed";
     } else {
       booking.paymentStatus = "partially_paid";
-      booking.status = "pending"; // Keep pending until full payment
+      booking.status = "confirmed"; // Keep pending until full payment
     }
 
     await booking.save();
@@ -516,8 +554,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
       );
     }
 
-
-      const io = getSocketIO();
+    const io = getSocketIO();
     io.to(`owner_${booking.ownerId}`).emit("booking_updated", {
       message:
         booking.paymentStatus === "fully_paid"
@@ -525,7 +562,6 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
           : "Partial payment received",
       booking,
     });
-
 
     res.status(200).json({
       success: true,
