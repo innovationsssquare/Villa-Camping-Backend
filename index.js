@@ -17,6 +17,7 @@ const { AdminRouter } = require("./Route/Admin");
 const { UserRouter } = require("./Route/User");
 const { BookingRouter } = require("./Route/Booking");
 const { LocationRouter } = require("./Route/Location");
+const { NotificationRouter } = require("./Route/Notification");
 
 const cron = require("node-cron");
 const axios = require("axios");
@@ -56,6 +57,7 @@ app.use("/api/v1/User", UserRouter);
 app.use("/api/v1/Booking", BookingRouter);
 app.use("/api/v1/Location", LocationRouter);
 app.use("/api/v1/Coupon", CouponRouter);
+app.use("/api/v1/Notification", NotificationRouter);
 
 //--------------Not Found Route-------------------//
 app.get("*", (req, res, next) => {
