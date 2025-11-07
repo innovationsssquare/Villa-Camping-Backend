@@ -405,7 +405,7 @@ const createBooking = async (req, res, next) => {
       booking,
     });
 
-    io.to(`owner_${booking.ownerId}`).emit("notification:new", {
+    io.to(`owner_${booking.ownerId}`).emit("notification_new", {
       type: "booking_created",
       title: notification.title,
       message: notification.message,
