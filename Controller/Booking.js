@@ -11,6 +11,7 @@ const { Camping, Tent } = require("../Model/Campingschema");
 const { Hotels, Room } = require("../Model/Hotelschema");
 const { getSocketIO } = require("../Services/Socket");
 const Notification = require("../Model/Notificationschema");
+const { sendPushNotification } = require("../Services/sendExpoNotification");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -399,19 +400,32 @@ const createBooking = async (req, res, next) => {
       },
     });
 
+ const owner = await User.findById(booking.ownerId);
+
+    if (owner?.expoPushToken) {
+      sendPushNotification(owner.expoPushToken, {
+        title: "New Booking Request",
+        body: `You received a new booking from ${booking.customerName}`,
+        data: {
+          screen: "/Bookingss/screen2",   // ✅ expo-router navigation target
+          bookingId: booking._id,
+        },
+      });
+    }
+    
     const io = getSocketIO();
     io.to(`owner_${booking.ownerId}`).emit("booking_created", {
       message: "New booking created",
       booking,
     });
 
-    io.to(`owner_${booking.ownerId}`).emit("notification_new", {
-      type: "booking_created",
-      title: notification.title,
-      message: notification.message,
-      booking: booking,
-      notification,
-    });
+    // io.to(`owner_${booking.ownerId}`).emit("notification_new", {
+    //   type: "booking_created",
+    //   title: notification.title,
+    //   message: notification.message,
+    //   booking: booking,
+    //   notification,
+    // });
 
     res.status(201).json({
       success: true,

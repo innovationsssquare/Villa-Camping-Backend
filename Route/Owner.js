@@ -13,7 +13,8 @@ const {
   uploadOwnerDocuments,
   updateBankDetails,
   getOwnerCounts,
-  verifyOwner
+  verifyOwner,
+  updatePushToken
 } = require("../Controller/Owner");
 const verifyToken = require("../MiddleWare/Verfiytoken");
 const verifyGoogleToken = require("../MiddleWare/verifyGoogleToken");
@@ -60,6 +61,7 @@ OwnerRouter.get("/get/owner/:id", getSingleOwner);
 OwnerRouter.delete("/delete/owner/:id", deleteOwner);
 OwnerRouter.get("/get-owner-counts", getOwnerCounts);
 OwnerRouter.put("/verify-owner/:id", verifyOwner);
+OwnerRouter.put("/users/updatePushToken", updatePushToken);
 
 // OwnerRouter.put("/owner/:ownerId/add-property/:propertyId", addPropertyToOwner);
 

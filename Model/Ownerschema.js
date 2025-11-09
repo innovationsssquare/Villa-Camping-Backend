@@ -76,6 +76,10 @@ const OwnerSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    expoPushToken: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

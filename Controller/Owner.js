@@ -508,6 +508,25 @@ const verifyOwner = async (req, res, next) => {
 };
 
 
+// controllers/userController.js
+const updatePushToken = async (req, res) => {
+  try {
+    const { ownerId, expoToken } = req.body;
+
+    if (!ownerId || !expoToken) {
+      return res.status(400).json({ message: "Missing data" });
+    }
+
+    await User.findByIdAndUpdate(ownerId, { expoPushToken: expoToken });
+
+    return res.json({ success: true, message: "Token saved" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 module.exports = {
   createOwner,
@@ -522,5 +541,6 @@ module.exports = {
   updateBankDetails,
   uploadOwnerDocuments,
   getOwnerCounts,
-  verifyOwner
+  verifyOwner,
+  updatePushToken
 };
