@@ -517,7 +517,7 @@ const updatePushToken = async (req, res) => {
       return res.status(400).json({ message: "Missing data" });
     }
 
-    await User.findByIdAndUpdate(ownerId, { expoPushToken: expoToken });
+    await Owner.findByIdAndUpdate(ownerId, { expoPushToken: expoToken });
 
     return res.json({ success: true, message: "Token saved" });
   } catch (err) {
