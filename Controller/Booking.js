@@ -12,7 +12,6 @@ const { Hotels, Room } = require("../Model/Hotelschema");
 const { getSocketIO } = require("../Services/Socket");
 const Notification = require("../Model/Notificationschema");
 const { sendPushNotification } = require("../Services/sendExpoNotification");
-const Owner = require("../Model/Ownerschema");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
