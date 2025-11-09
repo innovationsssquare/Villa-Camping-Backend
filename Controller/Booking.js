@@ -405,7 +405,7 @@ const createBooking = async (req, res, next) => {
     if (owner?.expoPushToken) {
       sendPushNotification(owner.expoPushToken, {
         title: "New Booking Request",
-        body: `You received a new booking from ${booking.customerName}`,
+        body: `You received a new booking from ${booking?.customerDetails?.firstName} ${booking?.customerDetails?.lastName}`,
         data: {
           screen: "/Bookingss/screen2",   // ✅ expo-router navigation target
           bookingId: booking._id,
