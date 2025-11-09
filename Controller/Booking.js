@@ -12,6 +12,7 @@ const { Hotels, Room } = require("../Model/Hotelschema");
 const { getSocketIO } = require("../Services/Socket");
 const Notification = require("../Model/Notificationschema");
 const { sendPushNotification } = require("../Services/sendExpoNotification");
+const Owner = require("../Model/Ownerschema");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -400,7 +401,7 @@ const createBooking = async (req, res, next) => {
       },
     });
 
- const owner = await User.findById(booking.ownerId);
+ const owner = await Owner.findById(booking.ownerId);
 
     if (owner?.expoPushToken) {
       sendPushNotification(owner.expoPushToken, {
@@ -412,7 +413,7 @@ const createBooking = async (req, res, next) => {
         },
       });
     }
-    
+
     const io = getSocketIO();
     io.to(`owner_${booking.ownerId}`).emit("booking_created", {
       message: "New booking created",
