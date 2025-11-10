@@ -63,7 +63,7 @@ OwnerRouter.delete("/delete/owner/:id", deleteOwner);
 OwnerRouter.get("/get-owner-counts", getOwnerCounts);
 OwnerRouter.put("/verify-owner/:id", verifyOwner);
 OwnerRouter.put("/users/updatePushToken", updatePushToken);
-OwnerRouter.put("/property/count/:ownerId", getOwnerPropertyCount);
+OwnerRouter.get("/property/count/:ownerId", getOwnerPropertyCount);
 
 // OwnerRouter.put("/owner/:ownerId/add-property/:propertyId", addPropertyToOwner);
 
