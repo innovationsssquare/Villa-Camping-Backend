@@ -6,6 +6,7 @@ const {
   getBookingsByCustomer,
   getBookingsByOwner,
   cancelBooking,
+  getBookingCountsByStatus
 } = require("../Controller/Booking");
 
 const BookingRouter = express.Router();
@@ -18,5 +19,6 @@ BookingRouter.get("/customer/:customerId", getBookingsByCustomer);
 BookingRouter.get("/owner/:ownerId", getBookingsByOwner);
 
 BookingRouter.put("/cancel/:id", cancelBooking);
+BookingRouter.get("/counts/:ownerId", getBookingCountsByStatus);
 
 module.exports = { BookingRouter };

@@ -527,6 +527,32 @@ const updatePushToken = async (req, res) => {
 };
 
 
+const getOwnerPropertyCount = async (req, res) => {
+  try {
+    const { ownerId } = req.params;
+
+    const owner = await Owner.findById(ownerId);
+
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+
+    const totalCount = owner.properties.length;
+
+    return res.json({
+      success: true,
+      totalProperties: totalCount,
+    });
+  } catch (error) {
+    console.error("Error fetching property count:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 
 module.exports = {
   createOwner,
@@ -542,5 +568,6 @@ module.exports = {
   uploadOwnerDocuments,
   getOwnerCounts,
   verifyOwner,
-  updatePushToken
+  updatePushToken,
+  getOwnerPropertyCount
 };

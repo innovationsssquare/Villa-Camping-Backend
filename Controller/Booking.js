@@ -997,6 +997,60 @@ const cancelBooking = async (req, res, next) => {
   }
 };
 
+
+const getBookingCountsByStatus = async (req, res, next) => {
+  try {
+    const { ownerId } = req.params;
+
+    if (!ownerId) {
+      return next(new AppErr("Owner ID is required", 400));
+    }
+
+    // Base filter for this owner
+    const baseFilter = { ownerId };
+
+    // Count by status
+    const total = await Booking.countDocuments(baseFilter);
+
+    const pending = await Booking.countDocuments({
+      ...baseFilter,
+      status: "pending",
+    });
+
+    const confirmed = await Booking.countDocuments({
+      ...baseFilter,
+      status: "confirmed",
+    });
+
+    const cancelled = await Booking.countDocuments({
+      ...baseFilter,
+      status: "cancelled",
+    });
+
+    const completed = await Booking.countDocuments({
+      ...baseFilter,
+      status: "completed",
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total,
+        pending,
+        confirmed,
+        cancelled,
+        completed,
+      },
+    });
+
+  } catch (err) {
+    console.error("Booking count error:", err);
+    next(new AppErr("Failed to fetch booking counts", 500));
+  }
+};
+
+
+
 module.exports = {
   createBooking,
   verifyPaymentAndConfirm,
@@ -1007,4 +1061,5 @@ module.exports = {
   getBookingsByCustomer,
   getBookingsByOwner,
   cancelBooking,
+  getBookingCountsByStatus
 };
