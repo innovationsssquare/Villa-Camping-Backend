@@ -246,16 +246,36 @@ PayoutSchema.pre("save", function (next) {
 });
 
 // Virtual for total paid to owner
+// PayoutSchema.virtual("totalPaidToOwner").get(function () {
+//   return this.payoutTransactions
+//     .filter((t) => t.status === "completed")
+//     .reduce((sum, t) => sum + t.amount, 0);
+// });
+
+// Virtual for pending payout amount
+// PayoutSchema.virtual("pendingPayoutAmount").get(function () {
+//   return this.financials.netPayout - this.totalPaidToOwner;
+// });
+
+// Virtual for total paid to owner
 PayoutSchema.virtual("totalPaidToOwner").get(function () {
-  return this.payoutTransactions
-    .filter((t) => t.status === "completed")
-    .reduce((sum, t) => sum + t.amount, 0);
+  const txns = Array.isArray(this.payoutTransactions)
+    ? this.payoutTransactions
+    : [];
+
+  return txns
+    .filter((t) => t?.status === "completed")
+    .reduce((sum, t) => sum + (t?.amount || 0), 0);
 });
 
 // Virtual for pending payout amount
 PayoutSchema.virtual("pendingPayoutAmount").get(function () {
-  return this.financials.netPayout - this.totalPaidToOwner;
+  const net = this?.financials?.netPayout || 0;
+  const paid = this?.totalPaidToOwner || 0;
+  return net - paid;
 });
+
+
 
 // Method to calculate payout
 PayoutSchema.methods.calculatePayout = function (bookingAmount, commissionRate) {
