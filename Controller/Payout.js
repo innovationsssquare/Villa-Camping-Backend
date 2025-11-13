@@ -85,7 +85,13 @@ const getOwnerMonthlyRevenue = async (req, res) => {
 
 const getRecentPayouts = async (req, res, next) => {
   try {
-    const payouts = await Payout.find()
+    const { ownerId } = req.params;
+
+    if (!ownerId) {
+      return next(new AppErr("Owner ID is required", 400));
+    }
+
+    const payouts = await Payout.find({ ownerId })
       .sort({ createdAt: -1 })
       .limit(10)
       .lean();
@@ -100,6 +106,7 @@ const getRecentPayouts = async (req, res, next) => {
     next(new AppErr("Failed to fetch recent payouts", 500));
   }
 };
+
 
 // -----------------------------------------------------
 // 2. TOTAL PENDING PAYOUT AMOUNT

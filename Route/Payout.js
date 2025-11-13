@@ -16,7 +16,7 @@ PayoutRouter.get(
   getOwnerMonthlyRevenue
 );
 
-PayoutRouter.get("/recent", getRecentPayouts);
+PayoutRouter.get("/recent/:ownerId", getRecentPayouts);
 
 // 🔹 Total pending payout amount
 PayoutRouter.get("/total-pending", getPendingPayoutTotal);
