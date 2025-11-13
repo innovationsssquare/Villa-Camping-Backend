@@ -275,21 +275,24 @@ PayoutSchema.virtual("pendingPayoutAmount").get(function () {
   return net - paid;
 });
 
-
-
 // Method to calculate payout
-PayoutSchema.methods.calculatePayout = function (bookingAmount, commissionRate) {
+PayoutSchema.methods.calculatePayout = function (
+  bookingAmount,
+  commissionRate
+) {
   const commissionAmount = (bookingAmount * commissionRate) / 100;
   const grossPayout = bookingAmount - commissionAmount;
-  
+
   // Calculate TDS on commission if applicable
-  const tdsAmount = (commissionAmount * (this.financials.taxOnCommission.tdsRate || 0)) / 100;
-  
+  const tdsAmount =
+    (commissionAmount * (this.financials.taxOnCommission.tdsRate || 0)) / 100;
+
   // Calculate GST on commission if applicable
-  const gstAmount = (commissionAmount * (this.financials.taxOnCommission.gstRate || 0)) / 100;
-  
+  const gstAmount =
+    (commissionAmount * (this.financials.taxOnCommission.gstRate || 0)) / 100;
+
   const totalTax = tdsAmount + gstAmount;
-  
+
   // Calculate payment gateway fee deduction
   let gatewayFeeDeduction = 0;
   if (this.financials.paymentGatewayFee.deductedFrom === "owner") {
@@ -297,18 +300,22 @@ PayoutSchema.methods.calculatePayout = function (bookingAmount, commissionRate) 
   } else if (this.financials.paymentGatewayFee.deductedFrom === "shared") {
     gatewayFeeDeduction = this.financials.paymentGatewayFee.amount / 2;
   }
-  
+
   const deductions = totalTax + gatewayFeeDeduction;
   const netPayout = grossPayout - deductions;
-  
+
   // Admin earnings
   const adminEarnings = {
     commission: commissionAmount,
     tax: totalTax,
-    gatewayFeeShare: this.financials.paymentGatewayFee.amount - gatewayFeeDeduction,
-    total: commissionAmount + totalTax + (this.financials.paymentGatewayFee.amount - gatewayFeeDeduction),
+    gatewayFeeShare:
+      this.financials.paymentGatewayFee.amount - gatewayFeeDeduction,
+    total:
+      commissionAmount +
+      totalTax +
+      (this.financials.paymentGatewayFee.amount - gatewayFeeDeduction),
   };
-  
+
   this.financials.bookingAmount = bookingAmount;
   this.financials.commissionAmount = commissionAmount;
   this.financials.grossPayout = grossPayout;
@@ -318,7 +325,7 @@ PayoutSchema.methods.calculatePayout = function (bookingAmount, commissionRate) 
   this.financials.deductions = deductions;
   this.financials.netPayout = netPayout;
   this.financials.adminEarnings = adminEarnings;
-  
+
   return this;
 };
 

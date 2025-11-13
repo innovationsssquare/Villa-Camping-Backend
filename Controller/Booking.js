@@ -12,6 +12,7 @@ const { Hotels, Room } = require("../Model/Hotelschema");
 const { getSocketIO } = require("../Services/Socket");
 const Notification = require("../Model/Notificationschema");
 const { sendPushNotification } = require("../Services/sendExpoNotification");
+const cron = require("node-cron");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -1049,7 +1050,33 @@ const getBookingCountsByStatus = async (req, res, next) => {
   }
 };
 
+cron.schedule("*/10 * * * *", async () => {
+  try {
+    // Convert NOW to IST correctly
+    const nowIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
 
+    // Find bookings where checkout time (UTC) has passed in IST
+    const result = await Booking.updateMany(
+      {
+        checkOut: { $lt: nowIST },
+        status: { $in: ["confirmed"] },
+        "cancellation.cancelled": false,
+      },
+      {
+        $set: {
+          status: "completed",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    console.log("Bookings marked completed:", result.modifiedCount);
+  } catch (err) {
+    console.error("CRON ERROR:", err);
+  }
+});
 
 module.exports = {
   createBooking,
