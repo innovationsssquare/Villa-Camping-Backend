@@ -19,10 +19,13 @@ PayoutRouter.get(
 PayoutRouter.get("/recent/:ownerId", getRecentPayouts);
 
 // 🔹 Total pending payout amount
-PayoutRouter.get("/total-pending", getPendingPayoutTotal);
+
+PayoutRouter.get("/total-pending/:ownerId", getPendingPayoutTotal);
+PayoutRouter.get("/total-completed/:ownerId", getCompletedPayoutTotal);
+
+
 
 // 🔹 Total completed payout amount
-PayoutRouter.get("/total-completed", getCompletedPayoutTotal);
 
 // 🔹 Total admin earnings (commission + taxes)
 PayoutRouter.get("/total-earnings", getAdminEarningsTotal);

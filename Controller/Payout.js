@@ -113,9 +113,16 @@ const getRecentPayouts = async (req, res, next) => {
 // -----------------------------------------------------
 const getPendingPayoutTotal = async (req, res, next) => {
   try {
+    const { ownerId } = req.params;
+
+    if (!ownerId) {
+      return next(new AppErr("Owner ID is required", 400));
+    }
+
     const result = await Payout.aggregate([
       {
         $match: {
+          ownerId: new mongoose.Types.ObjectId(ownerId),
           payoutStatus: { $in: ["pending", "eligible", "processing"] },
         },
       },
@@ -137,13 +144,25 @@ const getPendingPayoutTotal = async (req, res, next) => {
   }
 };
 
+
 // -----------------------------------------------------
 // 3. TOTAL COMPLETED PAYOUT AMOUNT
 // -----------------------------------------------------
 const getCompletedPayoutTotal = async (req, res, next) => {
   try {
+    const { ownerId } = req.params;
+
+    if (!ownerId) {
+      return next(new AppErr("Owner ID is required", 400));
+    }
+
     const result = await Payout.aggregate([
-      { $match: { payoutStatus: "completed" } },
+      {
+        $match: {
+          ownerId: new mongoose.Types.ObjectId(ownerId),
+          payoutStatus: "completed",
+        },
+      },
       {
         $group: {
           _id: null,
@@ -161,6 +180,7 @@ const getCompletedPayoutTotal = async (req, res, next) => {
     next(new AppErr("Failed to calculate completed payout total", 500));
   }
 };
+ 
 
 // -----------------------------------------------------
 // 4. TOTAL ADMIN EARNINGS (commission + tax + gateway fee)
