@@ -13,6 +13,7 @@ const { getSocketIO } = require("../Services/Socket");
 const Notification = require("../Model/Notificationschema");
 const { sendPushNotification } = require("../Services/sendExpoNotification");
 const cron = require("node-cron");
+const moment = require("moment-timezone");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -401,14 +402,14 @@ const createBooking = async (req, res, next) => {
       },
     });
 
- const owner = await Owner.findById(booking.ownerId);
+    const owner = await Owner.findById(booking.ownerId);
 
     if (owner?.expoPushToken) {
       sendPushNotification(owner.expoPushToken, {
         title: "New Booking Request",
         body: `You received a new booking from ${booking?.customerDetails?.firstName} ${booking?.customerDetails?.lastName}`,
         data: {
-          screen: "/Bookingss/screen2",   // ✅ expo-router navigation target
+          screen: "/Bookingss/screen2", // ✅ expo-router navigation target
           bookingId: booking._id,
         },
       });
@@ -998,7 +999,6 @@ const cancelBooking = async (req, res, next) => {
   }
 };
 
-
 const getBookingCountsByStatus = async (req, res, next) => {
   try {
     const { ownerId } = req.params;
@@ -1043,10 +1043,83 @@ const getBookingCountsByStatus = async (req, res, next) => {
         completed,
       },
     });
-
   } catch (err) {
     console.error("Booking count error:", err);
     next(new AppErr("Failed to fetch booking counts", 500));
+  }
+};
+
+const getPropertyBookings = async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+    const { month, year } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: "Month and year are required.",
+      });
+    }
+
+    // Convert month/year to date range
+    const startDate = moment(`${year}-${month}-01`).startOf("month").toDate();
+    const endDate = moment(startDate).endOf("month").toDate();
+
+    // Find all bookings for this property
+    const bookings = await Booking.find({
+      propertyId,
+      checkIn: { $lte: endDate },
+      checkOut: { $gte: startDate },
+    })
+      .populate("customerId", "firstName lastName mobile")
+      .lean();
+
+    // Convert to calendar friendly format
+    const calendarBookings = [];
+
+    bookings.forEach((bk) => {
+      const checkInDay = moment(bk.checkIn);
+      const checkOutDay = moment(bk.checkOut);
+
+      // Loop through all dates between check-in and check-out
+      for (
+        let d = checkInDay.clone();
+        d.isSameOrBefore(checkOutDay);
+        d.add(1, "day")
+      ) {
+        if (d.month() + 1 != Number(month)) continue; // only month days
+
+        calendarBookings.push({
+          date: d.date(), // Calendar date (1,2,3...)
+          isBooked: true,
+          guestName: `${bk.customerDetails.firstName} ${
+            bk.customerDetails.lastName || ""
+          }`,
+          guestPhone: bk.customerDetails.mobile,
+          bookingId: bk._id,
+          checkIn: bk.checkIn,
+          checkOut: bk.checkOut,
+          totalAmount: bk.pricing.totalAmount,
+          guests: bk.guests.adults + bk.guests.children,
+          status: bk.status,
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      propertyId,
+      month,
+      year,
+      totalBookings: bookings.length,
+      calendarBookings,
+    });
+  } catch (error) {
+    console.log("ERR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
@@ -1088,5 +1161,6 @@ module.exports = {
   getBookingsByCustomer,
   getBookingsByOwner,
   cancelBooking,
-  getBookingCountsByStatus
+  getBookingCountsByStatus,
+  getPropertyBookings,
 };
