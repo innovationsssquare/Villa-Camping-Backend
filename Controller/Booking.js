@@ -1062,6 +1062,91 @@ const getBookingCountsByStatus = async (req, res, next) => {
   }
 };
 
+// const getPropertyBookings = async (req, res) => {
+//   try {
+//     const { propertyId } = req.params;
+//     const { month, year } = req.query;
+
+//     if (!month || !year) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Month and year are required.",
+//       });
+//     }
+
+//     // Month range in IST
+//     const startDate = moment
+//       .tz(`${year}-${month}-01`, "Asia/Kolkata")
+//       .startOf("month")
+//       .toDate();
+//     const endDate = moment
+//       .tz(startDate, "Asia/Kolkata")
+//       .endOf("month")
+//       .toDate();
+
+//     // Fetch bookings
+//     const bookings = await Booking.find({
+//       propertyId,
+//       checkIn: { $lte: endDate },
+//       checkOut: { $gte: startDate },
+//     })
+//       .populate("customerId", "firstName lastName mobile")
+//       .lean();
+
+//     const calendarBookings = [];
+
+//     bookings.forEach((bk) => {
+//       // Convert booking dates to IST correctly
+//       const checkInIST = moment(bk.checkIn).tz("Asia/Kolkata").startOf("day");
+//       const checkOutIST = moment(bk.checkOut).tz("Asia/Kolkata").startOf("day");
+
+//       // Loop through dates (INCLUSIVE) → FIXED
+//       for (
+//         let d = checkInIST.clone();
+//         d.isBefore(checkOutIST);
+//         d.add(1, "day")
+//       ) {
+//         // Ensure we're only pushing THIS month
+//         if (d.tz("Asia/Kolkata").month() + 1 !== Number(month)) continue;
+
+//         calendarBookings.push({
+//           date: d.date(),
+//           isBooked: true,
+//           guestName: `${bk.customerDetails.firstName} ${
+//             bk.customerDetails.lastName || ""
+//           }`,
+//           guestPhone: bk.customerDetails.mobile,
+//           bookingId: bk._id,
+
+//           // SEND DATES IN IST ALWAYS
+//           checkIn: moment(bk.checkIn).tz("Asia/Kolkata").format(),
+//           checkOut: moment(bk.checkOut).tz("Asia/Kolkata").format(),
+
+//           totalAmount: bk.pricing.totalAmount,
+//           guests: bk.guests.adults + (bk.guests.children || 0),
+//           status: bk.status,
+//         });
+//       }
+//     });
+
+//     return res.json({
+//       success: true,
+//       propertyId,
+//       month,
+//       year,
+//       totalBookings: bookings.length,
+//       calendarBookings,
+//     });
+//   } catch (error) {
+//     console.log("ERR:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//     });
+//   }
+// };
+
+
 const getPropertyBookings = async (req, res) => {
   try {
     const { propertyId } = req.params;
@@ -1079,12 +1164,12 @@ const getPropertyBookings = async (req, res) => {
       .tz(`${year}-${month}-01`, "Asia/Kolkata")
       .startOf("month")
       .toDate();
+
     const endDate = moment
       .tz(startDate, "Asia/Kolkata")
       .endOf("month")
       .toDate();
 
-    // Fetch bookings
     const bookings = await Booking.find({
       propertyId,
       checkIn: { $lte: endDate },
@@ -1096,32 +1181,28 @@ const getPropertyBookings = async (req, res) => {
     const calendarBookings = [];
 
     bookings.forEach((bk) => {
-      // Convert booking dates to IST correctly
+      // Check-in day (start of day)
       const checkInIST = moment(bk.checkIn).tz("Asia/Kolkata").startOf("day");
-      const checkOutIST = moment(bk.checkOut).tz("Asia/Kolkata").startOf("day");
 
-      // Loop through dates (INCLUSIVE) → FIXED
+      // Check-out MUST NOT use startOf("day")
+      // Because 18th check-out means 18 is AVAILABLE
+      const checkOutIST = moment(bk.checkOut).tz("Asia/Kolkata");
+
       for (
         let d = checkInIST.clone();
-        d.isSameOrBefore(checkOutIST);
+        d.isBefore(checkOutIST); // stops BEFORE checkout day
         d.add(1, "day")
       ) {
-        // Ensure we're only pushing THIS month
-        if (d.tz("Asia/Kolkata").month() + 1 !== Number(month)) continue;
+        if (d.month() + 1 !== Number(month)) continue;
 
         calendarBookings.push({
           date: d.date(),
           isBooked: true,
-          guestName: `${bk.customerDetails.firstName} ${
-            bk.customerDetails.lastName || ""
-          }`,
+          guestName: `${bk.customerDetails.firstName} ${bk.customerDetails.lastName || ""}`,
           guestPhone: bk.customerDetails.mobile,
           bookingId: bk._id,
-
-          // SEND DATES IN IST ALWAYS
           checkIn: moment(bk.checkIn).tz("Asia/Kolkata").format(),
           checkOut: moment(bk.checkOut).tz("Asia/Kolkata").format(),
-
           totalAmount: bk.pricing.totalAmount,
           guests: bk.guests.adults + (bk.guests.children || 0),
           status: bk.status,
@@ -1137,6 +1218,7 @@ const getPropertyBookings = async (req, res) => {
       totalBookings: bookings.length,
       calendarBookings,
     });
+
   } catch (error) {
     console.log("ERR:", error);
     return res.status(500).json({
@@ -1145,6 +1227,7 @@ const getPropertyBookings = async (req, res) => {
     });
   }
 };
+
 
 cron.schedule("*/10 * * * *", async () => {
   try {
