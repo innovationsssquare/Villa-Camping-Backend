@@ -402,18 +402,18 @@ const createBooking = async (req, res, next) => {
       },
     });
 
-    const owner = await Owner.findById(booking.ownerId);
+    // const owner = await Owner.findById(booking.ownerId);
 
-    if (owner?.expoPushToken) {
-      sendPushNotification(owner.expoPushToken, {
-        title: "New Booking Request",
-        body: `You received a new booking from ${booking?.customerDetails?.firstName} ${booking?.customerDetails?.lastName}`,
-        data: {
-          screen: "/Bookingss/screen2", // ✅ expo-router navigation target
-          bookingId: booking._id,
-        },
-      });
-    }
+    // if (owner?.expoPushToken) {
+    //   sendPushNotification(owner.expoPushToken, {
+    //     title: "New Booking Request",
+    //     body: `You received a new booking from ${booking?.customerDetails?.firstName} ${booking?.customerDetails?.lastName}`,
+    //     data: {
+    //       screen: "/Bookingss/screen2", // ✅ expo-router navigation target
+    //       bookingId: booking._id,
+    //     },
+    //   });
+    // }
 
     const io = getSocketIO();
     io.to(`owner_${booking.ownerId}`).emit("booking_created", {
@@ -578,6 +578,19 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
           : "Partial payment received",
       booking,
     });
+
+    const owner = await Owner.findById(booking.ownerId);
+
+    if (owner?.expoPushToken) {
+      sendPushNotification(owner.expoPushToken, {
+        title: "New Booking Request",
+        body: `You received a new booking from ${booking?.customerDetails?.firstName} ${booking?.customerDetails?.lastName}`,
+        data: {
+          screen: "/Bookingss/screen1", // ✅ expo-router navigation target
+          bookingId: booking._id,
+        },
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -1062,8 +1075,14 @@ const getPropertyBookings = async (req, res) => {
     }
 
     // Month range in IST
-    const startDate = moment.tz(`${year}-${month}-01`, "Asia/Kolkata").startOf("month").toDate();
-    const endDate = moment.tz(startDate, "Asia/Kolkata").endOf("month").toDate();
+    const startDate = moment
+      .tz(`${year}-${month}-01`, "Asia/Kolkata")
+      .startOf("month")
+      .toDate();
+    const endDate = moment
+      .tz(startDate, "Asia/Kolkata")
+      .endOf("month")
+      .toDate();
 
     // Fetch bookings
     const bookings = await Booking.find({
@@ -1077,21 +1096,25 @@ const getPropertyBookings = async (req, res) => {
     const calendarBookings = [];
 
     bookings.forEach((bk) => {
-
       // Convert booking dates to IST correctly
       const checkInIST = moment(bk.checkIn).tz("Asia/Kolkata").startOf("day");
       const checkOutIST = moment(bk.checkOut).tz("Asia/Kolkata").startOf("day");
 
       // Loop through dates (INCLUSIVE) → FIXED
-      for (let d = checkInIST.clone(); d.isSameOrBefore(checkOutIST); d.add(1, "day")) {
-
+      for (
+        let d = checkInIST.clone();
+        d.isSameOrBefore(checkOutIST);
+        d.add(1, "day")
+      ) {
         // Ensure we're only pushing THIS month
         if (d.tz("Asia/Kolkata").month() + 1 !== Number(month)) continue;
 
         calendarBookings.push({
           date: d.date(),
           isBooked: true,
-          guestName: `${bk.customerDetails.firstName} ${bk.customerDetails.lastName || ""}`,
+          guestName: `${bk.customerDetails.firstName} ${
+            bk.customerDetails.lastName || ""
+          }`,
           guestPhone: bk.customerDetails.mobile,
           bookingId: bk._id,
 
@@ -1114,7 +1137,6 @@ const getPropertyBookings = async (req, res) => {
       totalBookings: bookings.length,
       calendarBookings,
     });
-
   } catch (error) {
     console.log("ERR:", error);
     return res.status(500).json({
@@ -1123,7 +1145,6 @@ const getPropertyBookings = async (req, res) => {
     });
   }
 };
-
 
 cron.schedule("*/10 * * * *", async () => {
   try {
