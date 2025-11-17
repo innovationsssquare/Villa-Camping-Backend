@@ -1146,7 +1146,6 @@ const getBookingCountsByStatus = async (req, res, next) => {
 //   }
 // };
 
-
 const getPropertyBookings = async (req, res) => {
   try {
     const { propertyId } = req.params;
@@ -1198,7 +1197,9 @@ const getPropertyBookings = async (req, res) => {
         calendarBookings.push({
           date: d.date(),
           isBooked: true,
-          guestName: `${bk.customerDetails.firstName} ${bk.customerDetails.lastName || ""}`,
+          guestName: `${bk.customerDetails.firstName} ${
+            bk.customerDetails.lastName || ""
+          }`,
           guestPhone: bk.customerDetails.mobile,
           bookingId: bk._id,
           checkIn: moment(bk.checkIn).tz("Asia/Kolkata").format(),
@@ -1218,7 +1219,6 @@ const getPropertyBookings = async (req, res) => {
       totalBookings: bookings.length,
       calendarBookings,
     });
-
   } catch (error) {
     console.log("ERR:", error);
     return res.status(500).json({
@@ -1228,13 +1228,10 @@ const getPropertyBookings = async (req, res) => {
   }
 };
 
-
 cron.schedule("*/10 * * * *", async () => {
   try {
     // Convert NOW to IST correctly
-    const nowIST = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
+    const nowIST = moment().tz("Asia/Kolkata").toDate();
 
     // Find bookings where checkout time (UTC) has passed in IST
     const result = await Booking.updateMany(
