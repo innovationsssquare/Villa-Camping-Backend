@@ -1061,11 +1061,11 @@ const getPropertyBookings = async (req, res) => {
       });
     }
 
-    // Convert month/year to date range
-    const startDate = moment(`${year}-${month}-01`).startOf("month").toDate();
-    const endDate = moment(startDate).endOf("month").toDate();
+    // Month range in IST
+    const startDate = moment.tz(`${year}-${month}-01`, "Asia/Kolkata").startOf("month").toDate();
+    const endDate = moment.tz(startDate, "Asia/Kolkata").endOf("month").toDate();
 
-    // Find all bookings for this property
+    // Fetch bookings
     const bookings = await Booking.find({
       propertyId,
       checkIn: { $lte: endDate },
@@ -1074,39 +1074,39 @@ const getPropertyBookings = async (req, res) => {
       .populate("customerId", "firstName lastName mobile")
       .lean();
 
-    // Convert to calendar friendly format
     const calendarBookings = [];
 
     bookings.forEach((bk) => {
-      const checkInDay = moment(bk.checkIn).startOf("day");
-      const checkOutDay = moment(bk.checkOut).startOf("day");
 
-      // Loop through all dates between check-in and check-out
-      for (
-        let d = checkInDay.clone();
-        d.isBefore(checkOutDay);
-        d.add(1, "day")
-      ) {
-        if (d.month() + 1 != Number(month)) continue; // only month days
+      // Convert booking dates to IST correctly
+      const checkInIST = moment(bk.checkIn).tz("Asia/Kolkata").startOf("day");
+      const checkOutIST = moment(bk.checkOut).tz("Asia/Kolkata").startOf("day");
+
+      // Loop through dates (INCLUSIVE) → FIXED
+      for (let d = checkInIST.clone(); d.isSameOrBefore(checkOutIST); d.add(1, "day")) {
+
+        // Ensure we're only pushing THIS month
+        if (d.tz("Asia/Kolkata").month() + 1 !== Number(month)) continue;
 
         calendarBookings.push({
           date: d.date(),
           isBooked: true,
-          guestName: `${bk.customerDetails.firstName} ${
-            bk.customerDetails.lastName || ""
-          }`,
+          guestName: `${bk.customerDetails.firstName} ${bk.customerDetails.lastName || ""}`,
           guestPhone: bk.customerDetails.mobile,
           bookingId: bk._id,
-          checkIn: bk.checkIn,
-          checkOut: bk.checkOut,
+
+          // SEND DATES IN IST ALWAYS
+          checkIn: moment(bk.checkIn).tz("Asia/Kolkata").format(),
+          checkOut: moment(bk.checkOut).tz("Asia/Kolkata").format(),
+
           totalAmount: bk.pricing.totalAmount,
-          guests: bk.guests.adults + bk.guests.children,
+          guests: bk.guests.adults + (bk.guests.children || 0),
           status: bk.status,
         });
       }
     });
 
-    res.json({
+    return res.json({
       success: true,
       propertyId,
       month,
@@ -1114,14 +1114,16 @@ const getPropertyBookings = async (req, res) => {
       totalBookings: bookings.length,
       calendarBookings,
     });
+
   } catch (error) {
     console.log("ERR:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });
   }
 };
+
 
 cron.schedule("*/10 * * * *", async () => {
   try {
