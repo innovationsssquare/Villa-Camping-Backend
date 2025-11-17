@@ -1078,19 +1078,19 @@ const getPropertyBookings = async (req, res) => {
     const calendarBookings = [];
 
     bookings.forEach((bk) => {
-      const checkInDay = moment(bk.checkIn);
-      const checkOutDay = moment(bk.checkOut);
+      const checkInDay = moment(bk.checkIn).startOf("day");
+      const checkOutDay = moment(bk.checkOut).startOf("day");
 
       // Loop through all dates between check-in and check-out
       for (
         let d = checkInDay.clone();
-        d.isSameOrBefore(checkOutDay);
+        d.isBefore(checkOutDay);
         d.add(1, "day")
       ) {
         if (d.month() + 1 != Number(month)) continue; // only month days
 
         calendarBookings.push({
-          date: d.date(), // Calendar date (1,2,3...)
+          date: d.date(),
           isBooked: true,
           guestName: `${bk.customerDetails.firstName} ${
             bk.customerDetails.lastName || ""
