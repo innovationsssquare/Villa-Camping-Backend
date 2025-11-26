@@ -1280,9 +1280,9 @@ const createOfflineBooking = async (req, res, next) => {
       !propertyId ||
       !ownerId ||
       !checkIn ||
-      !checkOut ||
-      !items ||
-      items.length === 0
+      !checkOut 
+      // !items ||
+      // items.length === 0
     ) {
       return next(new AppErr("Missing required fields", 400));
     }
