@@ -20,7 +20,7 @@ const BookingSchema = new mongoose.Schema({
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
+    required: false,
   },
   customerDetails: {
     firstName: { type: String, required: true },
@@ -55,7 +55,17 @@ const BookingSchema = new mongoose.Schema({
       totalPrice: { type: Number, required: true },
     },
   ],
-
+  bookingMode: {
+    type: String,
+    enum: ["online", "offline"],
+    default: "online",
+    index: true,
+  },
+  createdBy: {
+    type: String,
+    enum: ["system", "owner", "admin"],
+    default: "system",
+  },
   // Enhanced Coupon System
   coupon: {
     applied: { type: Boolean, default: false },
