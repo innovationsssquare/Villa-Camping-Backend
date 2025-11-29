@@ -9,7 +9,7 @@ const TentSchema = new mongoose.Schema({
   },
   tentType: {
     type: String,
-    enum: ["Single", "Couple", "Family", "luxury", "treehouse"],
+    enum: ["Single", "Couple", "Family", "luxury", "treehouse","Deluxe"],
     required: true,
   },
   totaltents: { type: Number, required: true },
