@@ -21,6 +21,6 @@ CampingRouter.delete("/delete/camping/:id", softDeleteCamping);
 CampingRouter.get("/get/campings/property/:propertyId", getCampingByProperty);
 CampingRouter.put("/approve-reject/:id", approveAndUpdateCamping);
 CampingRouter.put("/camping/:campingId/tents/pricing", updateCampingTentTypePricing);
-CampingRouter.post("/camping/add-tent/:id ", addTentToCamping);
+CampingRouter.post("/camping/add-tent/:id", addTentToCamping);
 
 module.exports = { CampingRouter };
