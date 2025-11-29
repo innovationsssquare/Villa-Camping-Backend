@@ -309,14 +309,14 @@ const updateCampingTentTypePricing = async (req, res, next) => {
 // Add Tent to Existing Camping
 const addTentToCamping = async (req, res, next) => {
   try {
-    const { campingId } = req.params;
+    const { id  } = req.params;
     const { tentType, capacity, pricing, images, quantity } = req.body;
 
     if (!tentType || !pricing) {
       return next(new AppErr("Tent type and pricing are required", 400));
     }
 
-    const camping = await Camping.findOne({ _id: campingId, deletedAt: null });
+    const camping = await Camping.findOne({ _id: id , deletedAt: null });
     if (!camping) {
       return next(new AppErr("Camping not found", 404));
     }
@@ -328,7 +328,7 @@ const addTentToCamping = async (req, res, next) => {
       pricing,
       images,
       quantity,
-      camping: campingId,
+      camping: id ,
     });
 
     // Push tent id inside camping document
