@@ -7,7 +7,8 @@ const {
   softDeleteCamping,
   getCampingByProperty,
   approveAndUpdateCamping,
-  updateCampingTentTypePricing
+  updateCampingTentTypePricing,
+  addTentToCamping
 } = require("../Controller/Camping");
 
 const CampingRouter = express.Router();
@@ -20,5 +21,6 @@ CampingRouter.delete("/delete/camping/:id", softDeleteCamping);
 CampingRouter.get("/get/campings/property/:propertyId", getCampingByProperty);
 CampingRouter.put("/approve-reject/:id", approveAndUpdateCamping);
 CampingRouter.put("/camping/:campingId/tents/pricing", updateCampingTentTypePricing);
+CampingRouter.post("/camping/add-tent/:campingId", addTentToCamping);
 
 module.exports = { CampingRouter };

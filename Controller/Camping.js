@@ -306,6 +306,48 @@ const updateCampingTentTypePricing = async (req, res, next) => {
   }
 };
 
+// Add Tent to Existing Camping
+const addTentToCamping = async (req, res, next) => {
+  try {
+    const { campingId } = req.params;
+    const { tentType, capacity, pricing, images, quantity } = req.body;
+
+    if (!tentType || !pricing) {
+      return next(new AppErr("Tent type and pricing are required", 400));
+    }
+
+    const camping = await Camping.findOne({ _id: campingId, deletedAt: null });
+    if (!camping) {
+      return next(new AppErr("Camping not found", 404));
+    }
+
+    // Create new Tent
+    const newTent = await Tent.create({
+      tentType,
+      capacity,
+      pricing,
+      images,
+      quantity,
+      camping: campingId,
+    });
+
+    // Push tent id inside camping document
+    camping.tents.push(newTent._id);
+    await camping.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Tent added successfully to camping",
+      data: newTent,
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to add tent to camping", 500));
+  }
+};
+
+
+
 
 module.exports = {
   createCamping,
@@ -316,5 +358,6 @@ module.exports = {
   getCampingByProperty,
   addCampingReview,
   approveAndUpdateCamping,
-  updateCampingTentTypePricing
+  updateCampingTentTypePricing,
+  addTentToCamping
 };
