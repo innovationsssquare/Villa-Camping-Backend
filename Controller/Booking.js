@@ -1467,6 +1467,225 @@ const createOfflineBooking = async (req, res, next) => {
 };
 
 
+// OFFLINE Camping booking (no Razorpay, no Payout)
+const createOfflineCampingBooking = async (req, res, next) => {
+  try {
+    const { campingId } = req.params;
+    const {
+      customerDetails,
+      checkIn,
+      checkOut,
+      guests,
+      items,
+      taxRate = 0,
+      paymentType,            // "full" | "partial" | "unpaid"
+      partialPercentage = 30, // used when paymentType === "partial"
+      paidAmount,             // optional: override partial amount
+      paymentMethod = "cash", // "cash" | "upi" | "bank" | ...
+      createdBy = "owner",    // "owner" | "admin"
+    } = req.body;
+
+    // 🔹 Basic validations
+    if (!campingId) {
+      return next(new AppErr("Camping ID is required", 400));
+    }
+
+    if (
+      !checkIn ||
+      !checkOut ||
+      !items ||
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
+      return next(new AppErr("Missing required fields", 400));
+    }
+
+    if (
+      !customerDetails?.firstName ||
+      !customerDetails?.mobile ||
+      !customerDetails?.email
+    ) {
+      return next(new AppErr("Customer details incomplete", 400));
+    }
+
+    // 🔹 Get Camping & owner
+    const camping = await Camping.findOne({
+      _id: campingId,
+      deletedAt: null,
+    }).select("owner");
+
+    if (!camping) {
+      return next(new AppErr("Camping property not found", 404));
+    }
+
+    const propertyType = "Camping";
+    const propertyId = campingId;
+    const ownerId = camping.owner;
+
+    // ❌ No coupon for offline booking
+    const pricing = calculatePricing(items, null, taxRate);
+
+    let payments = [];
+    let paymentStatus = "unpaid";
+    let status = "pending";
+    let paymentPlan = {
+      type: "full",
+      partialPercentage: null,
+      amountDue: pricing.totalAmount,
+      remainingAmount: pricing.totalAmount,
+      dueDate: null,
+    };
+
+    // 1️⃣ FULL PAYMENT OFFLINE
+    if (paymentType === "full") {
+      payments.push({
+        amount: pricing.totalAmount,
+        currency: "INR",
+        status: "successful",
+        paymentType: "full",
+        paymentMethod,
+        transactionId: `OFFLINE-${Date.now()}`,
+        gatewayFee: 0,
+        paidAt: new Date(),
+      });
+
+      paymentStatus = "fully_paid";
+      status = "confirmed";
+      paymentPlan = {
+        type: "full",
+        partialPercentage: null,
+        amountDue: 0,
+        remainingAmount: 0,
+        dueDate: null,
+      };
+    }
+
+    // 2️⃣ PARTIAL PAYMENT OFFLINE
+    else if (paymentType === "partial") {
+      const calcPartial = paidAmount
+        ? Number(paidAmount)
+        : Math.round((pricing.totalAmount * partialPercentage) / 100);
+
+      const partialAmount = Math.min(calcPartial, pricing.totalAmount);
+      const remainingAmount = pricing.totalAmount - partialAmount;
+
+      if (partialAmount > 0) {
+        payments.push({
+          amount: partialAmount,
+          currency: "INR",
+          status: "successful",
+          paymentType: "partial",
+          paymentMethod,
+          transactionId: `OFFLINE-PARTIAL-${Date.now()}`,
+          gatewayFee: 0,
+          paidAt: new Date(),
+        });
+
+        paymentStatus = "partially_paid";
+        status = "confirmed"; // or "pending" if you prefer until full payment
+      } else {
+        paymentStatus = "unpaid";
+        status = "pending";
+      }
+
+      // e.g. remaining due 7 days before check-in
+      const dueDate = new Date(checkIn);
+      dueDate.setDate(dueDate.getDate() - 7);
+
+      paymentPlan = {
+        type: "partial",
+        partialPercentage,
+        amountDue: partialAmount,
+        remainingAmount,
+        dueDate,
+      };
+    }
+
+    // 3️⃣ UNPAID OFFLINE BLOCKING (just block inventory, no money yet)
+    else if (paymentType === "unpaid") {
+      paymentStatus = "unpaid";
+      status = "pending";
+      paymentPlan = {
+        type: "full",
+        partialPercentage: null,
+        amountDue: pricing.totalAmount,
+        remainingAmount: pricing.totalAmount,
+        dueDate: null,
+      };
+    }
+
+    // 🔹 Create booking
+    const booking = await Booking.create({
+      propertyType,          // "Camping"
+      propertyId,            // campingId
+      ownerId,               // camping.owner
+      customerDetails,
+      checkIn,
+      checkOut,
+      guests,
+      items,
+      coupon: { applied: false },
+      pricing,
+      paymentPlan,
+      payments,
+      paymentStatus,
+      status,
+      bookingMode: "offline",
+      createdBy,            // owner / admin
+      payoutStatus: "not_created", // no Razorpay payout
+    });
+
+    // 🔒 Block Tent inventory ONLY when fully paid
+    if (booking.paymentStatus === "fully_paid") {
+      const { checkIn, checkOut, items } = booking;
+
+      for (const item of items) {
+        const { unitType, unitId } = item;
+
+        let Model;
+        switch (unitType) {
+          case "Tent":
+            Model = Tent;
+            break;
+          case "CottageUnit":
+            Model = CottageUnit;
+            break;
+          case "RoomUnit":
+            Model = Room;
+            break;
+          default:
+            console.warn(`Unknown unit type for Camping offline booking: ${unitType}`);
+            continue;
+        }
+
+        await Model.findByIdAndUpdate(
+          unitId,
+          {
+            $push: { bookedDates: { checkIn, checkOut } },
+            status: "booked",
+          },
+          { new: true }
+        );
+      }
+    }
+
+    // 🔔 Socket notification to owner room
+    const io = getSocketIO();
+    io.to(`owner_${booking.ownerId}`).emit("booking_created", {
+      message: "New OFFLINE camping booking created",
+      booking,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Offline camping booking created successfully",
+      data: booking,
+    });
+  } catch (err) {
+    console.error("Create offline camping booking error:", err);
+    next(new AppErr(err.message || "Failed to create offline camping booking", 500));
+  }
+};
 
 
 module.exports = {
@@ -1481,5 +1700,6 @@ module.exports = {
   cancelBooking,
   getBookingCountsByStatus,
   getPropertyBookings,
-  createOfflineBooking
+  createOfflineBooking,
+  createOfflineCampingBooking
 };

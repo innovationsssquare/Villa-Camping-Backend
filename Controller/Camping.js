@@ -1,6 +1,8 @@
 const { Camping, Tent } = require("../Model/Campingschema");
 const AppErr = require("../Services/AppErr");
 const Owner = require("../Model/Ownerschema");
+const Booking = require("../Model/Bookingschema");
+const moment = require("moment-timezone");
 
 // Create Camping and Tent data
 const createCamping = async (req, res, next) => {
@@ -362,6 +364,140 @@ const addTentToCamping = async (req, res, next) => {
 };
 
 
+// GET /api/camping/:campingId/day-details?date=YYYY-MM-DD
+const getcampingdaydetails = async (req, res, next) => {
+  try {
+    const { campingId } = req.params;
+    const { date } = req.query; // same as dateStr from your screen
+
+    if (!date) {
+      return next(new AppErr("Date is required in query (YYYY-MM-DD)", 400));
+    }
+
+    // 🔹 Ensure camping exists
+    const camping = await Camping.findOne({
+      _id: campingId,
+      deletedAt: null,
+    }).select("_id name");
+    if (!camping) {
+      return next(new AppErr("Camping property not found", 404));
+    }
+
+    // 🔹 Day range in IST
+    const dayStartIST = moment
+      .tz(date, "YYYY-MM-DD", "Asia/Kolkata")
+      .startOf("day");
+    const dayEndIST = dayStartIST.clone().endOf("day");
+
+    const dayStart = dayStartIST.toDate();
+    const dayEnd = dayEndIST.toDate();
+
+    // 1) Get all tents for this camping
+    const tents = await Tent.find({
+      camping: campingId,
+      deletedAt: null,
+      isAvailable: true,
+    }).lean();
+
+    // Map tentId -> tent doc for quick access
+    const tentMap = {};
+    tents.forEach((t) => {
+      tentMap[t._id.toString()] = t;
+    });
+
+    // 2) Get all bookings that overlap this day for this camping
+    const bookings = await Booking.find({
+      propertyType: "Camping",
+      propertyId: campingId,
+      status: { $in: ["pending", "confirmed"] }, // ignore cancelled/completed
+      checkIn: { $lt: dayEnd }, // overlap logic
+      checkOut: { $gt: dayStart },
+    }).lean();
+
+    // 3) Compute booked counts per tentType from booking items
+    const bookedByType = {}; // { 'Single': 3, 'Couple': 1, ... }
+
+    bookings.forEach((bk) => {
+      bk.items
+        ?.filter((item) => item.unitType === "Tent")
+        .forEach((item) => {
+          const tentDoc = tentMap[item.unitId?.toString()];
+          if (!tentDoc) return;
+          const type = tentDoc.tentType || "Tent";
+
+          if (!bookedByType[type]) bookedByType[type] = 0;
+          bookedByType[type] += item.quantity || 1;
+        });
+    });
+
+    // 4) Build tent summary like your mock:
+    //    { tentType, total, booked, available, price: { weekday, weekend } }
+    const groupedByType = {}; // merge multiple docs of same type
+
+    tents.forEach((t) => {
+      if (!groupedByType[t.tentType]) {
+        groupedByType[t.tentType] = {
+          tentType: t.tentType,
+          total: 0,
+          weekdayPrice: t.pricing?.weekdayPrice || 0,
+          weekendPrice: t.pricing?.weekendPrice || 0,
+        };
+      }
+      groupedByType[t.tentType].total += t.totaltents || 0;
+    });
+
+    const tentsSummary = Object.values(groupedByType).map((t) => {
+      const booked = bookedByType[t.tentType] || 0;
+      const available = Math.max((t.total || 0) - booked, 0);
+
+      return {
+        tentType: t.tentType,
+        total: t.total,
+        booked,
+        available,
+        price: {
+          weekday: t.weekdayPrice,
+          weekend: t.weekendPrice,
+        },
+      };
+    });
+
+    // 5) Build booking list like your mock `bookings` array
+    const bookingsList = bookings.map((bk) => {
+      const tentItem = bk.items.find((it) => it.unitType === "Tent");
+      const tentDoc = tentItem
+        ? tentMap[tentItem.unitId?.toString()]
+        : null;
+
+      return {
+        tentType: tentDoc?.tentType || tentItem?.typeName || "Tent",
+        guestName: `${bk.customerDetails.firstName} ${
+          bk.customerDetails.lastName || ""
+        }`.trim(),
+        checkIn: bk.checkIn,
+        checkOut: bk.checkOut,
+        bookingId: bk._id.toString(),
+        status: bk.status,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        camping: {
+          _id: camping._id,
+          name: camping.name,
+        },
+        date,
+        tents: tentsSummary,
+        bookings: bookingsList,
+      },
+    });
+  } catch (err) {
+    console.error("getCampingDayDetails error:", err);
+    next(new AppErr("Failed to fetch camping day details", 500));
+  }
+}
 
 
 
@@ -375,5 +511,6 @@ module.exports = {
   addCampingReview,
   approveAndUpdateCamping,
   updateCampingTentTypePricing,
-  addTentToCamping
+  addTentToCamping,
+  getcampingdaydetails
 };

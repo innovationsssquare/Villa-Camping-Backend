@@ -8,13 +8,15 @@ const {
   getCampingByProperty,
   approveAndUpdateCamping,
   updateCampingTentTypePricing,
-  addTentToCamping
+  addTentToCamping,
+  getcampingdaydetails
 } = require("../Controller/Camping");
 
 const CampingRouter = express.Router();
 
 CampingRouter.post("/create/camping", createCamping);
 CampingRouter.get("/get/campings", getAllCampings);
+CampingRouter.get("/day-details/:campingId", getcampingdaydetails);
 CampingRouter.get("/get/camping/:id", getCampingById);
 CampingRouter.put("/update/camping/:id", updateCamping);
 CampingRouter.delete("/delete/camping/:id", softDeleteCamping);
