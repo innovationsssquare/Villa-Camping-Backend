@@ -1470,8 +1470,8 @@ const createOfflineBooking = async (req, res, next) => {
 // OFFLINE Camping booking (no Razorpay, no Payout)
 const createOfflineCampingBooking = async (req, res, next) => {
   try {
-    const { campingId } = req.params;
     const {
+      campingId,
       customerDetails,
       checkIn,
       checkOut,
