@@ -1,7 +1,8 @@
 const { Cottages, CottageUnit  } = require("../Model/Cottageschema");
 const Owner = require("../Model/Ownerschema");
 const AppErr = require("../Services/AppErr");
-
+const Booking = require("../Model/Bookingschema");
+const moment = require("moment-timezone");
 // Create Cottages and Cottage Units
 const createCottage = async (req, res, next) => {
   try {
@@ -281,6 +282,141 @@ const updateCottagePricingByType = async (req, res, next) => {
   }
 };
 
+const getCottagedaydetails = async (req, res, next) => {
+  try {
+    const { cottageId } = req.params;
+    const { date } = req.query; // same as dateStr from your screen
+
+    if (!date) {
+      return next(new AppErr("Date is required in query (YYYY-MM-DD)", 400));
+    }
+
+    // 🔹 Ensure cottage exists
+    const cottage = await Cottages.findOne({
+      _id: cottageId,
+      deletedAt: null,
+    }).select("_id name");
+
+    if (!cottage) {
+      return next(new AppErr("Cottage property not found", 404));
+    }
+
+    // 🔹 Day range in IST
+    const dayStartIST = moment
+      .tz(date, "YYYY-MM-DD", "Asia/Kolkata")
+      .startOf("day");
+    const dayEndIST = dayStartIST.clone().endOf("day");
+
+    const dayStart = dayStartIST.toDate();
+    const dayEnd = dayEndIST.toDate();
+
+    // 1) Get all cottage units for this cottage
+    const units = await CottageUnit.find({
+      Cottages: cottageId,
+      deletedAt: null,
+    }).lean();
+
+    // Map unitId -> unit doc for quick access
+    const unitMap = {};
+    units.forEach((u) => {
+      unitMap[u._id.toString()] = u;
+    });
+
+    // 2) Get all bookings that overlap this day for this cottage
+    const bookings = await Booking.find({
+      propertyType: "Cottage",
+      propertyId: cottageId,
+      status: { $in: ["pending", "confirmed"] }, // ignore cancelled/completed
+      checkIn: { $lt: dayEnd },  // overlap logic
+      checkOut: { $gt: dayStart },
+    }).lean();
+
+    // 3) Compute booked counts per cottageType from booking items
+    const bookedByType = {}; // { 'Single': 3, 'Couple': 1, ... }
+
+    bookings.forEach((bk) => {
+      bk.items
+        ?.filter((item) => item.unitType === "CottageUnit")
+        .forEach((item) => {
+          const unitDoc = unitMap[item.unitId?.toString()];
+          if (!unitDoc) return;
+          const type = unitDoc.cottageType || item.typeName || "Cottage";
+
+          if (!bookedByType[type]) bookedByType[type] = 0;
+          bookedByType[type] += item.quantity || 1;
+        });
+    });
+
+    // 4) Build cottage summary:
+    //    { cottageType, total, booked, available, price: { weekday, weekend } }
+    const groupedByType = {}; // merge multiple docs of same type
+
+    units.forEach((u) => {
+      if (!groupedByType[u.cottageType]) {
+        groupedByType[u.cottageType] = {
+          cottageType: u.cottageType,
+          total: 0,
+          weekdayPrice: u.pricing?.weekdayPrice || 0,
+          weekendPrice: u.pricing?.weekendPrice || 0,
+        };
+      }
+      groupedByType[u.cottageType].total += u.totalcottage || 0;
+    });
+
+    const cottagesSummary = Object.values(groupedByType).map((u) => {
+      const booked = bookedByType[u.cottageType] || 0;
+      const available = Math.max((u.total || 0) - booked, 0);
+
+      return {
+        cottageType: u.cottageType,
+        total: u.total,
+        booked,
+        available,
+        price: {
+          weekday: u.weekdayPrice,
+          weekend: u.weekendPrice,
+        },
+      };
+    });
+
+    // 5) Build booking list for the UI
+    const bookingsList = bookings.map((bk) => {
+      const unitItem = bk.items.find((it) => it.unitType === "CottageUnit");
+      const unitDoc = unitItem
+        ? unitMap[unitItem.unitId?.toString()]
+        : null;
+
+      return {
+        cottageType: unitDoc?.cottageType || unitItem?.typeName || "Cottage",
+        guestName: `${bk.customerDetails.firstName} ${
+          bk.customerDetails.lastName || ""
+        }`.trim(),
+        checkIn: bk.checkIn,
+        checkOut: bk.checkOut,
+        bookingId: bk._id.toString(),
+        status: bk.status,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        cottage: {
+          _id: cottage._id,
+          name: cottage.name,
+        },
+        date,
+        cottages: cottagesSummary,
+        bookings: bookingsList,
+      },
+    });
+  } catch (err) {
+    console.error("getCottagedaydetails error:", err);
+    next(new AppErr("Failed to fetch cottage day details", 500));
+  }
+};
+
+
 module.exports = {
   createCottage,
   getAllCottages,
@@ -290,5 +426,6 @@ module.exports = {
   getCottageByProperty,
   addCottageReview,
   approveAndUpdateCottage,
-  updateCottagePricingByType
+  updateCottagePricingByType,
+  getCottagedaydetails
 };

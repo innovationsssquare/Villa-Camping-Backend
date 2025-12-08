@@ -9,7 +9,9 @@ const {
   getBookingCountsByStatus,
   getPropertyBookings,
   createOfflineBooking,
-  createOfflineCampingBooking
+  createOfflineCampingBooking,
+  createOfflineCottageBooking,
+  createOfflineHotelBooking
 } = require("../Controller/Booking");
 
 const BookingRouter = express.Router();
@@ -17,6 +19,9 @@ const BookingRouter = express.Router();
 BookingRouter.post("/create", createBooking);
 BookingRouter.post("/createoffline", createOfflineBooking);
 BookingRouter.post("/createofflinecamping", createOfflineCampingBooking);
+BookingRouter.post("/cottageoffline", createOfflineCottageBooking);
+BookingRouter.post("/Hoteloffline", createOfflineHotelBooking);
+
 BookingRouter.post("/verify", verifyPaymentAndConfirm);
 
 BookingRouter.get("/:id", getBookingById);

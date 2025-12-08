@@ -9,6 +9,7 @@ const {
   addHotelReview,
   approveAndUpdateHotel,
   updateHotelPricingByType,
+  getHoteldaydetails
 } = require("../Controller/Hotel");
 
 const HotelRouter = express.Router();
@@ -22,5 +23,6 @@ HotelRouter.get("/get/hotels/property/:propertyId", getHotelByProperty);
 HotelRouter.post("/add/review/:hotelId", addHotelReview);
 HotelRouter.put("/approve-reject/:id", approveAndUpdateHotel);
 HotelRouter.put("/update-hotel-pricing/:hotelId", updateHotelPricingByType);
+HotelRouter.get("/day-details/:hotelId", getHoteldaydetails);
 
 module.exports = { HotelRouter };

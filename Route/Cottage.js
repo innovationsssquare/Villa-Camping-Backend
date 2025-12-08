@@ -8,7 +8,8 @@ const {
   getCottageByProperty,
   addCottageReview,
   approveAndUpdateCottage,
-  updateCottagePricingByType
+  updateCottagePricingByType,
+  getCottagedaydetails
 } = require("../Controller/Cottage");
 
 const CottageRouter = express.Router();
@@ -22,5 +23,6 @@ CottageRouter.get("/get/cottages/property/:propertyId", getCottageByProperty);
 CottageRouter.post("/add/review/:cottageId", addCottageReview);
 CottageRouter.put("/approve-reject/:id", approveAndUpdateCottage);
 CottageRouter.put("/update-cottage-pricing/:cottageId", updateCottagePricingByType);
+CottageRouter.get("/day-details/:cottageId", getCottagedaydetails);
 
 module.exports = { CottageRouter };
