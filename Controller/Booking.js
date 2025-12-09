@@ -1688,10 +1688,237 @@ const createOfflineCampingBooking = async (req, res, next) => {
 };
 
 // Create OFFLINE Cottage booking (no Razorpay, no Payout)
+// const createOfflineCottageBooking = async (req, res, next) => {
+//   try {
+//     const {
+//       cottageId,            // 🔹 property id for cottage (similar to campingId)
+//       customerDetails,
+//       checkIn,
+//       checkOut,
+//       guests,
+//       items,                // [{ unitType: "CottageUnit", unitId, typeName, quantity, pricePerNight, totalPrice }]
+//       taxRate = 0,
+//       paymentType,          // "full" | "partial" | "unpaid"
+//       partialPercentage = 30,
+//       paidAmount,
+//       paymentMethod = "cash",  // "cash" | "upi" | "bank" | ...
+//       createdBy = "owner",     // "owner" | "admin"
+//     } = req.body;
+
+//     // 🔹 Basic validations
+//     if (!cottageId) {
+//       return next(new AppErr("Cottage ID is required", 400));
+//     }
+
+//     if (
+//       !checkIn ||
+//       !checkOut ||
+//       !items ||
+//       !Array.isArray(items) ||
+//       items.length === 0
+//     ) {
+//       return next(new AppErr("Missing required fields", 400));
+//     }
+
+//     if (
+//       !customerDetails?.firstName ||
+//       !customerDetails?.mobile ||
+//       !customerDetails?.email
+//     ) {
+//       return next(new AppErr("Customer details incomplete", 400));
+//     }
+
+//     // 🔹 Get Cottage & owner
+//     const cottage = await Cottages.findOne({
+//       _id: cottageId,
+//       deletedAt: null,
+//     }).select("owner");
+
+//     if (!cottage) {
+//       return next(new AppErr("Cottage property not found", 404));
+//     }
+
+//     const propertyType = "Cottages";
+//     const propertyId = cottageId;
+//     const ownerId = cottage.owner;
+
+//     // ❌ No coupon for offline booking
+//     const pricing = calculatePricing(items, null, taxRate);
+
+//     let payments = [];
+//     let paymentStatus = "unpaid";
+//     let status = "pending";
+//     let paymentPlan = {
+//       type: "full",
+//       partialPercentage: null,
+//       amountDue: pricing.totalAmount,
+//       remainingAmount: pricing.totalAmount,
+//       dueDate: null,
+//     };
+
+//     // 1️⃣ FULL PAYMENT OFFLINE
+//     if (paymentType === "full") {
+//       payments.push({
+//         amount: pricing.totalAmount,
+//         currency: "INR",
+//         status: "successful",
+//         paymentType: "full",
+//         paymentMethod,
+//         transactionId: `OFFLINE-COTTAGE-${Date.now()}`,
+//         gatewayFee: 0,
+//         paidAt: new Date(),
+//       });
+
+//       paymentStatus = "fully_paid";
+//       status = "confirmed";
+//       paymentPlan = {
+//         type: "full",
+//         partialPercentage: null,
+//         amountDue: 0,
+//         remainingAmount: 0,
+//         dueDate: null,
+//       };
+//     }
+
+//     // 2️⃣ PARTIAL PAYMENT OFFLINE
+//     else if (paymentType === "partial") {
+//       const calcPartial = paidAmount
+//         ? Number(paidAmount)
+//         : Math.round((pricing.totalAmount * partialPercentage) / 100);
+
+//       const partialAmount = Math.min(calcPartial, pricing.totalAmount);
+//       const remainingAmount = pricing.totalAmount - partialAmount;
+
+//       if (partialAmount > 0) {
+//         payments.push({
+//           amount: partialAmount,
+//           currency: "INR",
+//           status: "successful",
+//           paymentType: "partial",
+//           paymentMethod,
+//           transactionId: `OFFLINE-COTTAGE-PARTIAL-${Date.now()}`,
+//           gatewayFee: 0,
+//           paidAt: new Date(),
+//         });
+
+//         paymentStatus = "partially_paid";
+//         status = "confirmed"; // or "pending" if you want until full payment
+//       } else {
+//         paymentStatus = "unpaid";
+//         status = "pending";
+//       }
+
+//       // e.g. remaining due 7 days before check-in
+//       const dueDate = new Date(checkIn);
+//       dueDate.setDate(dueDate.getDate() - 7);
+
+//       paymentPlan = {
+//         type: "partial",
+//         partialPercentage,
+//         amountDue: partialAmount,
+//         remainingAmount,
+//         dueDate,
+//       };
+//     }
+
+//     // 3️⃣ UNPAID OFFLINE BLOCKING (just block inventory, no money yet)
+//     else if (paymentType === "unpaid") {
+//       paymentStatus = "unpaid";
+//       status = "pending";
+//       paymentPlan = {
+//         type: "full",
+//         partialPercentage: null,
+//         amountDue: pricing.totalAmount,
+//         remainingAmount: pricing.totalAmount,
+//         dueDate: null,
+//       };
+//     }
+
+//     // 🔹 Create booking
+//     const booking = await Booking.create({
+//       propertyType,          // "Cottage"
+//       propertyId,            // cottageId
+//       ownerId,               // cottage.owner
+//       customerDetails,
+//       checkIn,
+//       checkOut,
+//       guests,
+//       items,
+//       coupon: { applied: false },
+//       pricing,
+//       paymentPlan,
+//       payments,
+//       paymentStatus,
+//       status,
+//       bookingMode: "offline",
+//       createdBy,             // owner / admin
+//       payoutStatus: "not_created", // no Razorpay payout
+//     });
+
+//     // 🔒 Block CottageUnit inventory ONLY when fully paid
+//     if (booking.paymentStatus === "fully_paid") {
+//       const { checkIn, checkOut, items } = booking;
+
+//       for (const item of items) {
+//         const { unitType, unitId } = item;
+
+//         let Model;
+//         switch (unitType) {
+//           case "CottageUnit":
+//             Model = CottageUnit;
+//             break;
+//           // you can keep these if you ever reuse for mixed types
+//           case "Tent":
+//             Model = Tent;
+//             break;
+//           case "RoomUnit":
+//             Model = Room;
+//             break;
+//           default:
+//             console.warn(
+//               `Unknown unit type for Cottage offline booking: ${unitType}`
+//             );
+//             continue;
+//         }
+
+//         await Model.findByIdAndUpdate(
+//           unitId,
+//           {
+//             $push: { bookedDates: { checkIn, checkOut } },
+//             status: "booked",
+//           },
+//           { new: true }
+//         );
+//       }
+//     }
+
+//     // 🔔 Socket notification to owner room
+//     const io = getSocketIO();
+//     io.to(`owner_${booking.ownerId}`).emit("booking_created", {
+//       message: "New OFFLINE cottage booking created",
+//       booking,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Offline cottage booking created successfully",
+//       data: booking,
+//     });
+//   } catch (err) {
+//     console.error("Create offline cottage booking error:", err);
+//     next(
+//       new AppErr(
+//         err.message || "Failed to create offline cottage booking",
+//         500
+//       )
+//     );
+//   }
+// };
+
 const createOfflineCottageBooking = async (req, res, next) => {
   try {
     const {
-      cottageId,            // 🔹 property id for cottage (similar to campingId)
+      cottageId,            // property id for cottage
       customerDetails,
       checkIn,
       checkOut,
@@ -1701,8 +1928,8 @@ const createOfflineCottageBooking = async (req, res, next) => {
       paymentType,          // "full" | "partial" | "unpaid"
       partialPercentage = 30,
       paidAmount,
-      paymentMethod = "cash",  // "cash" | "upi" | "bank" | ...
-      createdBy = "owner",     // "owner" | "admin"
+      paymentMethod = "cash",
+      createdBy = "owner",
     } = req.body;
 
     // 🔹 Basic validations
@@ -1728,6 +1955,19 @@ const createOfflineCottageBooking = async (req, res, next) => {
       return next(new AppErr("Customer details incomplete", 400));
     }
 
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    if (!(checkInDate instanceof Date) || isNaN(checkInDate)) {
+      return next(new AppErr("Invalid check-in date", 400));
+    }
+    if (!(checkOutDate instanceof Date) || isNaN(checkOutDate)) {
+      return next(new AppErr("Invalid check-out date", 400));
+    }
+    if (checkOutDate <= checkInDate) {
+      return next(new AppErr("Check-out must be after check-in", 400));
+    }
+
     // 🔹 Get Cottage & owner
     const cottage = await Cottages.findOne({
       _id: cottageId,
@@ -1738,9 +1978,107 @@ const createOfflineCottageBooking = async (req, res, next) => {
       return next(new AppErr("Cottage property not found", 404));
     }
 
-    const propertyType = "Cottages";
+    const propertyType = "Cottages"; 
     const propertyId = cottageId;
     const ownerId = cottage.owner;
+
+    // 🔹 Validate availability per CottageUnit (by date, NOT by status)
+    const cottageUnitIds = items
+      .filter((it) => it.unitType === "CottageUnit")
+      .map((it) => it.unitId);
+
+    const uniqueUnitIds = [...new Set(cottageUnitIds)];
+
+    const cottageUnits = await CottageUnit.find({
+      _id: { $in: uniqueUnitIds },
+      deletedAt: null,
+    }).lean();
+
+    const cottageUnitMap = {};
+    cottageUnits.forEach((cu) => {
+      cottageUnitMap[cu._id.toString()] = cu;
+    });
+
+    // To reuse later for status update
+    const postBookingStatusMap = {}; // unitId -> { willBeFullyBooked, checkInDate, checkOutDate }
+
+    for (const item of items) {
+      if (item.unitType !== "CottageUnit") continue;
+
+      const unitIdStr = item.unitId.toString();
+      const unitDoc = cottageUnitMap[unitIdStr];
+      if (!unitDoc) {
+        return next(new AppErr("Selected cottage unit not found", 404));
+      }
+
+      const requestedQty = Number(item.quantity) || 0;
+      if (requestedQty <= 0) {
+        return next(
+          new AppErr(
+            `Invalid quantity for cottage type ${unitDoc.cottageType}`,
+            400
+          )
+        );
+      }
+
+      // 🔍 Find existing overlapping bookings for this CottageUnit & date range
+      const agg = await Booking.aggregate([
+        {
+          $match: {
+            propertyType: "Cottages",
+            propertyId: cottageId,
+            status: { $in: ["pending", "confirmed"] },
+            checkIn: { $lt: checkOutDate }, // overlap
+            checkOut: { $gt: checkInDate },
+          },
+        },
+        { $unwind: "$items" },
+        {
+          $match: {
+            "items.unitType": "CottageUnit",
+            "items.unitId": item.unitId,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            bookedQty: { $sum: "$items.quantity" },
+          },
+        },
+      ]);
+
+      const alreadyBooked = agg[0]?.bookedQty || 0;
+      const totalCottages = Number(unitDoc.totalcottage) || 0;
+
+      const availableQty = totalCottages - alreadyBooked;
+
+      if (availableQty <= 0) {
+        return next(
+          new AppErr(
+            `No availability for cottage type ${unitDoc.cottageType} for selected dates`,
+            400
+          )
+        );
+      }
+
+      if (requestedQty > availableQty) {
+        return next(
+          new AppErr(
+            `Only ${availableQty} cottage(s) available for type ${unitDoc.cottageType} on selected dates`,
+            400
+          )
+        );
+      }
+
+      const willBeFullyBooked =
+        alreadyBooked + requestedQty >= totalCottages && totalCottages > 0;
+
+      postBookingStatusMap[unitIdStr] = {
+        willBeFullyBooked,
+        checkInDate,
+        checkOutDate,
+      };
+    }
 
     // ❌ No coupon for offline booking
     const pricing = calculatePricing(items, null, taxRate);
@@ -1802,14 +2140,13 @@ const createOfflineCottageBooking = async (req, res, next) => {
         });
 
         paymentStatus = "partially_paid";
-        status = "confirmed"; // or "pending" if you want until full payment
+        status = "confirmed";
       } else {
         paymentStatus = "unpaid";
         status = "pending";
       }
 
-      // e.g. remaining due 7 days before check-in
-      const dueDate = new Date(checkIn);
+      const dueDate = new Date(checkInDate);
       dueDate.setDate(dueDate.getDate() - 7);
 
       paymentPlan = {
@@ -1821,7 +2158,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       };
     }
 
-    // 3️⃣ UNPAID OFFLINE BLOCKING (just block inventory, no money yet)
+    // 3️⃣ UNPAID OFFLINE (no money yet)
     else if (paymentType === "unpaid") {
       paymentStatus = "unpaid";
       status = "pending";
@@ -1840,8 +2177,8 @@ const createOfflineCottageBooking = async (req, res, next) => {
       propertyId,            // cottageId
       ownerId,               // cottage.owner
       customerDetails,
-      checkIn,
-      checkOut,
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
       guests,
       items,
       coupon: { applied: false },
@@ -1851,53 +2188,85 @@ const createOfflineCottageBooking = async (req, res, next) => {
       paymentStatus,
       status,
       bookingMode: "offline",
-      createdBy,             // owner / admin
-      payoutStatus: "not_created", // no Razorpay payout
+      createdBy,
+      payoutStatus: "not_created",
     });
 
-    // 🔒 Block CottageUnit inventory ONLY when fully paid
-    if (booking.paymentStatus === "fully_paid") {
-      const { checkIn, checkOut, items } = booking;
+   // After create booking & before sending response:
+if (booking.paymentStatus === "fully_paid") {
+  for (const item of booking.items) {
+    const { unitType, unitId, quantity } = item;
 
-      for (const item of items) {
-        const { unitType, unitId } = item;
-
-        let Model;
-        switch (unitType) {
-          case "CottageUnit":
-            Model = CottageUnit;
-            break;
-          // you can keep these if you ever reuse for mixed types
-          case "Tent":
-            Model = Tent;
-            break;
-          case "RoomUnit":
-            Model = Room;
-            break;
-          default:
-            console.warn(
-              `Unknown unit type for Cottage offline booking: ${unitType}`
-            );
-            continue;
-        }
-
-        await Model.findByIdAndUpdate(
-          unitId,
-          {
-            $push: { bookedDates: { checkIn, checkOut } },
-            status: "booked",
-          },
-          { new: true }
-        );
-      }
+    let Model;
+    switch (unitType) {
+      case "CottageUnit":
+        Model = CottageUnit;
+        break;
+      case "Tent":
+        Model = Tent;
+        break;
+      case "RoomUnit":
+        Model = Room;
+        break;
+      default:
+        continue;
     }
 
-    // 🔔 Socket notification to owner room
-    const io = getSocketIO();
-    io.to(`owner_${booking.ownerId}`).emit("booking_created", {
-      message: "New OFFLINE cottage booking created",
-      booking,
-    });
+    // Get Total cottages of this unit
+    const unitDoc = await Model.findById(unitId);
+    const total = Number(unitDoc.totalcottage || unitDoc.totalRooms || 0);
+
+    // Count bookings after this offline booking
+    const overlapping = await Booking.aggregate([
+      {
+        $match: {
+          propertyType: booking.propertyType,
+          propertyId: booking.propertyId,
+          status: { $in: ["pending", "confirmed"] },
+          checkIn: { $lt: booking.checkOut },
+          checkOut: { $gt: booking.checkIn },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $match: {
+          "items.unitType": unitType,
+          "items.unitId": unitId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          bookedQty: { $sum: "$items.quantity" },
+        },
+      },
+    ]);
+
+    const bookedQty = overlapping[0]?.bookedQty || 0;
+
+    // If unit is fully booked for those dates → mark booked
+    const newStatus =
+      bookedQty >= total ? "booked" : "available";
+
+    // Update: push bookedDates + correct status
+    await Model.findByIdAndUpdate(
+      unitId,
+      {
+        $push: {
+          bookedDates: {
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+          },
+        },
+        status: newStatus,
+      },
+      { new: true }
+    );
+  }
+}
+
+
+
 
     res.status(201).json({
       success: true,
@@ -1914,6 +2283,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
     );
   }
 };
+
 
 const createOfflineHotelBooking = async (req, res, next) => {
   try {
