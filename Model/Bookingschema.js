@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const BookingSchema = new mongoose.Schema({
   propertyType: {
     type: String,
-    enum: ["Villa", "Camping", "Hotel", "Cottage"],
+    enum: ["Villa", "Camping", "Hotel", "Cottages"],
     required: true,
   },
   propertyId: {
