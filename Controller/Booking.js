@@ -1977,7 +1977,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
     }
 
     // VERY IMPORTANT: must match BookingSchema enum
-    const propertyType = "Cottage"; // ✅ not "Cottages"
+    const propertyType = "Cottages"; // ✅ not "Cottages"
     const propertyId = cottageId;
     const ownerId = cottage.owner;
 
@@ -2022,7 +2022,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       const agg = await Booking.aggregate([
         {
           $match: {
-            propertyType: "Cottage",          // ✅ must match BookingSchema
+            propertyType: "Cottages",          // ✅ must match BookingSchema
             propertyId: cottageId,
             status: { $in: ["pending", "confirmed"] },
             checkIn: { $lt: checkOutDate },   // overlap condition
@@ -2198,7 +2198,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
         const overlapping = await Booking.aggregate([
           {
             $match: {
-              propertyType: "Cottage",
+              propertyType: "Cottages",
               propertyId: booking.propertyId,
               status: { $in: ["pending", "confirmed"] },
               checkIn: { $lt: booking.checkOut },
