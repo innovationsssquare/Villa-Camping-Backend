@@ -1738,7 +1738,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       return next(new AppErr("Cottage property not found", 404));
     }
 
-    const propertyType = "Cottage";
+    const propertyType = "Cottages";
     const propertyId = cottageId;
     const ownerId = cottage.owner;
 

@@ -324,7 +324,7 @@ const getCottagedaydetails = async (req, res, next) => {
 
     // 2) Get all bookings that overlap this day for this cottage
     const bookings = await Booking.find({
-      propertyType: "Cottage",
+      propertyType: "Cottages",
       propertyId: cottageId,
       status: { $in: ["pending", "confirmed"] }, // ignore cancelled/completed
       checkIn: { $lt: dayEnd },  // overlap logic
@@ -340,7 +340,7 @@ const getCottagedaydetails = async (req, res, next) => {
         .forEach((item) => {
           const unitDoc = unitMap[item.unitId?.toString()];
           if (!unitDoc) return;
-          const type = unitDoc.cottageType || item.typeName || "Cottage";
+          const type = unitDoc.cottageType || item.typeName || "Cottages";
 
           if (!bookedByType[type]) bookedByType[type] = 0;
           bookedByType[type] += item.quantity || 1;
@@ -387,7 +387,7 @@ const getCottagedaydetails = async (req, res, next) => {
         : null;
 
       return {
-        cottageType: unitDoc?.cottageType || unitItem?.typeName || "Cottage",
+        cottageType: unitDoc?.cottageType || unitItem?.typeName || "Cottages",
         guestName: `${bk.customerDetails.firstName} ${
           bk.customerDetails.lastName || ""
         }`.trim(),
