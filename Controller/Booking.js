@@ -1918,22 +1918,24 @@ const createOfflineCampingBooking = async (req, res, next) => {
 const createOfflineCottageBooking = async (req, res, next) => {
   try {
     const {
-      cottageId, // property id for cottage
+      cottageId,            // property id for cottage
       customerDetails,
       checkIn,
       checkOut,
       guests,
-      items, // [{ unitType: "CottageUnit", unitId, typeName, quantity, pricePerNight, totalPrice }]
+      items,                // [{ unitType: "CottageUnit", unitId, typeName, quantity, pricePerNight, totalPrice }]
       taxRate = 0,
-      paymentType, // "full" | "partial" | "unpaid"
+      paymentType,          // "full" | "partial" | "unpaid"
       partialPercentage = 30,
       paidAmount,
       paymentMethod = "cash",
       createdBy = "owner",
     } = req.body;
 
-    // 1️⃣ Basic validations
-    if (!cottageId) return next(new AppErr("Cottage ID is required", 400));
+    // 🔹 Basic validations
+    if (!cottageId) {
+      return next(new AppErr("Cottage ID is required", 400));
+    }
 
     if (
       !checkIn ||
@@ -1966,7 +1968,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       return next(new AppErr("Check-out must be after check-in", 400));
     }
 
-    // 2️⃣ Get Cottage & owner
+    // 🔹 Get Cottage & owner
     const cottage = await Cottages.findOne({
       _id: cottageId,
       deletedAt: null,
@@ -1976,18 +1978,20 @@ const createOfflineCottageBooking = async (req, res, next) => {
       return next(new AppErr("Cottage property not found", 404));
     }
 
-    // VERY IMPORTANT: must match BookingSchema enum
-    const propertyType = "Cottages"; // ✅ not "Cottages"
-    const propertyId = cottageId;
+    const propertyType = "Cottages"; // ✅ matches Booking schema enum
+    const propertyId = new mongoose.Types.ObjectId(cottageId);
     const ownerId = cottage.owner;
 
-    // 3️⃣ Validate AVAILABILITY per CottageUnit (date-based, using Booking + quantity)
+    // 🔹 Collect all CottageUnit IDs from items
     const cottageUnitIds = items
       .filter((it) => it.unitType === "CottageUnit")
       .map((it) => it.unitId);
 
-    const uniqueUnitIds = [...new Set(cottageUnitIds.map((id) => id.toString()))];
+    const uniqueUnitIds = [...new Set(cottageUnitIds)].map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
 
+    // 🔹 Load CottageUnit docs
     const cottageUnits = await CottageUnit.find({
       _id: { $in: uniqueUnitIds },
       deletedAt: null,
@@ -1998,10 +2002,12 @@ const createOfflineCottageBooking = async (req, res, next) => {
       cottageUnitMap[cu._id.toString()] = cu;
     });
 
+    // 🔹 Check availability per CottageUnit (by DATE + QUANTITY, NOT status)
     for (const item of items) {
       if (item.unitType !== "CottageUnit") continue;
 
       const unitIdStr = item.unitId.toString();
+      const unitObjectId = new mongoose.Types.ObjectId(item.unitId);
       const unitDoc = cottageUnitMap[unitIdStr];
 
       if (!unitDoc) {
@@ -2018,14 +2024,14 @@ const createOfflineCottageBooking = async (req, res, next) => {
         );
       }
 
-      // 🔍 How many cottages of this unit are already booked in the overlapping range?
+      // 🔍 Find existing overlapping bookings for this CottageUnit & date range
       const agg = await Booking.aggregate([
         {
           $match: {
-            propertyType: "Cottages",          // ✅ must match BookingSchema
-            propertyId: cottageId,
+            propertyType: "Cottages",      // ✅ now aligned with schema
+            propertyId: propertyId,        // ✅ cast to ObjectId
             status: { $in: ["pending", "confirmed"] },
-            checkIn: { $lt: checkOutDate },   // overlap condition
+            checkIn: { $lt: checkOutDate }, // overlap
             checkOut: { $gt: checkInDate },
           },
         },
@@ -2033,7 +2039,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
         {
           $match: {
             "items.unitType": "CottageUnit",
-            "items.unitId": item.unitId,
+            "items.unitId": unitObjectId, // ✅ must be ObjectId, not string
           },
         },
         {
@@ -2046,7 +2052,18 @@ const createOfflineCottageBooking = async (req, res, next) => {
 
       const alreadyBooked = agg[0]?.bookedQty || 0;
       const totalCottages = Number(unitDoc.totalcottage) || 0;
+
       const availableQty = totalCottages - alreadyBooked;
+
+      // Debug (you can keep this while testing)
+      // console.log({
+      //   unitId: unitIdStr,
+      //   type: unitDoc.cottageType,
+      //   totalCottages,
+      //   alreadyBooked,
+      //   requestedQty,
+      //   availableQty,
+      // });
 
       if (availableQty <= 0) {
         return next(
@@ -2067,7 +2084,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       }
     }
 
-    // 4️⃣ Pricing (no coupon for offline)
+    // ❌ No coupon for offline booking
     const pricing = calculatePricing(items, null, taxRate);
 
     let payments = [];
@@ -2081,9 +2098,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       dueDate: null,
     };
 
-    // 5️⃣ Payment logic
-
-    // FULL PAYMENT
+    // 1️⃣ FULL PAYMENT OFFLINE
     if (paymentType === "full") {
       payments.push({
         amount: pricing.totalAmount,
@@ -2107,7 +2122,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       };
     }
 
-    // PARTIAL PAYMENT
+    // 2️⃣ PARTIAL PAYMENT OFFLINE
     else if (paymentType === "partial") {
       const calcPartial = paidAmount
         ? Number(paidAmount)
@@ -2147,7 +2162,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
       };
     }
 
-    // UNPAID (block but no money yet)
+    // 3️⃣ UNPAID OFFLINE (no money yet)
     else if (paymentType === "unpaid") {
       paymentStatus = "unpaid";
       status = "pending";
@@ -2160,10 +2175,10 @@ const createOfflineCottageBooking = async (req, res, next) => {
       };
     }
 
-    // 6️⃣ Create booking
+    // 🔹 Create booking
     const booking = await Booking.create({
-      propertyType,          // "Cottage"
-      propertyId,            // cottageId
+      propertyType,          // "Cottages"
+      propertyId,            // ObjectId(cottageId)
       ownerId,               // cottage.owner
       customerDetails,
       checkIn: checkInDate,
@@ -2181,20 +2196,22 @@ const createOfflineCottageBooking = async (req, res, next) => {
       payoutStatus: "not_created",
     });
 
-    // 7️⃣ Update CottageUnit bookedDates + status ONLY if fully paid
+    // 🔒 After booking: update CottageUnit.status + bookedDates
     if (booking.paymentStatus === "fully_paid") {
       for (const item of booking.items) {
         if (item.unitType !== "CottageUnit") continue;
 
         const unitId = item.unitId;
+        const unitObjectId =
+          unitId instanceof mongoose.Types.ObjectId
+            ? unitId
+            : new mongoose.Types.ObjectId(unitId);
 
-        // Get total capacity for this unit
-        const unitDoc = await CottageUnit.findById(unitId);
+        const unitDoc = await CottageUnit.findById(unitObjectId);
         if (!unitDoc) continue;
 
-        const total = Number(unitDoc.totalcottage) || 0;
+        const total = Number(unitDoc.totalcottage || 0);
 
-        // Recompute total booked qty for this unit on this date range
         const overlapping = await Booking.aggregate([
           {
             $match: {
@@ -2209,7 +2226,7 @@ const createOfflineCottageBooking = async (req, res, next) => {
           {
             $match: {
               "items.unitType": "CottageUnit",
-              "items.unitId": unitId,
+              "items.unitId": unitObjectId,
             },
           },
           {
@@ -2221,10 +2238,10 @@ const createOfflineCottageBooking = async (req, res, next) => {
         ]);
 
         const bookedQty = overlapping[0]?.bookedQty || 0;
-        const fullyBooked = total > 0 && bookedQty >= total;
+        const newStatus = bookedQty >= total ? "booked" : "available";
 
         await CottageUnit.findByIdAndUpdate(
-          unitId,
+          unitObjectId,
           {
             $push: {
               bookedDates: {
@@ -2232,14 +2249,13 @@ const createOfflineCottageBooking = async (req, res, next) => {
                 checkOut: booking.checkOut,
               },
             },
-            status: fullyBooked ? "booked" : "available",
+            status: newStatus,
           },
           { new: true }
         );
       }
     }
 
-    // 8️⃣ Response
     res.status(201).json({
       success: true,
       message: "Offline cottage booking created successfully",
