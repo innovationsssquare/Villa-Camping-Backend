@@ -343,7 +343,7 @@ const getHoteldaydetails = async (req, res, next) => {
 
     // 2) Get all bookings that overlap this day for this hotel
     const bookings = await Booking.find({
-      propertyType: "Hotel",
+      propertyType: "Hotels",
       propertyId: hotelId,
       status: { $in: ["pending", "confirmed"] }, // ignore cancelled/completed
       checkIn: { $lt: dayEnd }, // overlap
