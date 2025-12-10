@@ -2324,7 +2324,7 @@ const createOfflineHotelBooking = async (req, res, next) => {
       return next(new AppErr("Hotel not found", 404));
     }
 
-    const propertyType = "Hotel";
+    const propertyType = "Hotels";
     const propertyId = hotelId;
     const ownerId = hotel.owner;
 
@@ -2476,12 +2476,6 @@ const createOfflineHotelBooking = async (req, res, next) => {
       }
     }
 
-    // 🔔 Socket notification
-    const io = getSocketIO();
-    io.to(`owner_${booking.ownerId}`).emit("booking_created", {
-      message: "New OFFLINE hotel booking created",
-      booking,
-    });
 
     res.status(201).json({
       success: true,
