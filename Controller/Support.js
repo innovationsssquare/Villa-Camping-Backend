@@ -4,13 +4,14 @@ const AppErr = require("../Services/AppErr"); // adjust path if needed
 // ✅ Create a new support ticket (for your mobile SupportScreen)
 const createSupportTicket = async (req, res, next) => {
   try {
-    const { subject, category, priority, description } = req.body;
+    const { subject, category, priority, description,owner } = req.body;
 
     if (!subject || !description) {
       return next(new AppErr("Subject and description are required", 400));
     }
 
     const ticketData = {
+      owner,
       subject,
       category: category || "payment",
       priority: priority || "medium",
