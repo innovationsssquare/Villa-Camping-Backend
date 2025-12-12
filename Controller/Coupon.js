@@ -246,81 +246,137 @@ const DeleteCoupon = async (req, res, next) => {
 };
 
 // Apply a coupon
+// const ApplyCoupon = async (req, res, next) => {
+//   try {
+//     // Validate incoming request data
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({
+//         status: false,
+//         message: "Validation errors",
+//         errors: errors.array(),
+//       });
+//     }
+
+//     const { couponCode, orderValue, userId, deviceId } = req.body;
+
+//     // Fetch the coupon or offer from the database
+//     const coupon = await CouponOffer.findOne({ code: couponCode });
+
+//     if (!coupon) {
+//       return res.status(404).json({
+//         status: false,
+//         message: "Invalid coupon code",
+//       });
+//     }
+
+//     // Check if the coupon is expired
+//     if (new Date() > new Date(coupon.validTill)) {
+//       return res.status(400).json({
+//         status: false,
+//         message: "Coupon has expired",
+//       });
+//     }
+
+//     // Check if the user has exceeded their usage limit
+//     const userUsageCount = await CouponOffer.countDocuments({
+//       code: couponCode,
+//       "users": userId,
+//     });
+
+//     if (userUsageCount >= coupon.userLimit) {
+//       return res.status(400).json({
+//         status: false,
+//         message: `You have exceeded the usage limit for this coupon (${coupon.userLimit} times)`,
+//       });
+//     }
+
+//     // Check if the device has already used this coupon
+//     if (coupon.devicesUsed.includes(deviceId)) {
+//       return res.status(400).json({
+//         status: false,
+//         message: "This device has already used the coupon",
+//       });
+//     }
+
+//     // Check if the user has already used the coupon
+//     if (coupon.users.includes(userId)) {
+//       return res.status(400).json({
+//         status: false,
+//         message: "This user has already used the coupon",
+//       });
+//     }
+
+//     // Validate the order value
+//     if (orderValue < coupon.minOrderValue) {
+//       return res.status(400).json({
+//         status: false,
+//         message: `Order value must be at least ${coupon.minOrderValue} to apply this coupon`,
+//       });
+//     }
+
+//     // Update coupon usage for the device and user
+//     coupon.devicesUsed.push(deviceId);
+//     coupon.users.push(userId);
+//     await coupon.save();
+
+//     // Calculate the discount
+//     let discountAmount = 0;
+//     if (coupon.discount.type === "percentage") {
+//       discountAmount = (orderValue * coupon.discount.amount) / 100;
+//     } else if (coupon.discount.type === "fixed") {
+//       discountAmount = coupon.discount.amount;
+//     }
+
+//     // Return the discount details
+//     return res.status(200).json({
+//       status: "success",
+//       data: {
+//         coupon,
+//         discountAmount,
+//       },
+//     });
+//   } catch (err) {
+//     next(new AppErr("Failed to apply coupon", 500, err.message));
+//   }
+// };
 const ApplyCoupon = async (req, res, next) => {
   try {
-    // Validate incoming request data
+    // validate incoming request body if you use express-validator
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation errors",
-        errors: errors.array(),
-      });
+      return res.status(400).json({ status: false, message: "Validation errors", errors: errors.array() });
     }
 
     const { couponCode, orderValue, userId, deviceId } = req.body;
-
-    // Fetch the coupon or offer from the database
-    const coupon = await CouponOffer.findOne({ code: couponCode });
-
-    if (!coupon) {
-      return res.status(404).json({
-        status: false,
-        message: "Invalid coupon code",
-      });
+    if (!couponCode) {
+      return res.status(400).json({ status: false, message: "couponCode is required" });
     }
 
-    // Check if the coupon is expired
-    if (new Date() > new Date(coupon.validTill)) {
-      return res.status(400).json({
-        status: false,
-        message: "Coupon has expired",
-      });
-    }
-
-    // Check if the user has exceeded their usage limit
-    const userUsageCount = await CouponOffer.countDocuments({
-      code: couponCode,
-      "users": userId,
+    // Find coupon that is active & not expired
+    const coupon = await CouponOffer.findOne({
+      code: couponCode.trim().toUpperCase(),
+      isActive: true,
+      validTill: { $gte: new Date() },
     });
 
-    if (userUsageCount >= coupon.userLimit) {
-      return res.status(400).json({
-        status: false,
-        message: `You have exceeded the usage limit for this coupon (${coupon.userLimit} times)`,
-      });
+    if (!coupon) {
+      return res.status(404).json({ status: false, message: "Invalid or expired coupon code" });
     }
 
-    // Check if the device has already used this coupon
-    if (coupon.devicesUsed.includes(deviceId)) {
-      return res.status(400).json({
-        status: false,
-        message: "This device has already used the coupon",
-      });
-    }
+    // Check user limit: how many times this user has used this coupon (do not block here if you prefer?)
+    // IMPORTANT: For preview we should inform user of limits but not mutate
+    // You can count bookings in Booking collection if you want accurate usage per user
+    // const userUsageCount = await Booking.countDocuments({ customerId: userId, "coupon.couponId": coupon._id, status: { $ne: "cancelled" } });
+    // if (userUsageCount >= coupon.userLimit) { ... } // optionally block preview
 
-    // Check if the user has already used the coupon
-    if (coupon.users.includes(userId)) {
-      return res.status(400).json({
-        status: false,
-        message: "This user has already used the coupon",
-      });
-    }
+    // Check device usage similarly:
+    // if (coupon.devicesUsed.includes(deviceId)) { ... } // optionally indicate already used
 
-    // Validate the order value
-    if (orderValue < coupon.minOrderValue) {
-      return res.status(400).json({
-        status: false,
-        message: `Order value must be at least ${coupon.minOrderValue} to apply this coupon`,
-      });
-    }
+    // Check min order / min nights rules - you may have other fields
+    // Example: if (orderValue < coupon.minOrderValue) return 400
 
-    // Update coupon usage for the device and user
-    coupon.devicesUsed.push(deviceId);
-    coupon.users.push(userId);
-    await coupon.save();
-
-    // Calculate the discount
+    // Calculate discount (same logic as before)
     let discountAmount = 0;
     if (coupon.discount.type === "percentage") {
       discountAmount = (orderValue * coupon.discount.amount) / 100;
@@ -328,18 +384,26 @@ const ApplyCoupon = async (req, res, next) => {
       discountAmount = coupon.discount.amount;
     }
 
-    // Return the discount details
+    // Respect maxDiscount cap
+    if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+      discountAmount = coupon.maxDiscount;
+    }
+
+    discountAmount = Math.min(discountAmount, orderValue);
+    discountAmount = Math.round(discountAmount * 100) / 100; // optional rounding
+
     return res.status(200).json({
       status: "success",
       data: {
-        coupon,
+        coupon: coupon.toObject(),
         discountAmount,
       },
     });
   } catch (err) {
-    next(new AppErr("Failed to apply coupon", 500, err.message));
+    next(new AppErr("Failed to validate coupon", 500, err.message));
   }
 };
+
 
 
 // Get all coupons by property ID
