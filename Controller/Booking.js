@@ -34,7 +34,6 @@ const validateAndApplyCoupon = async (
   deviceId
 ) => {
   if (!couponCode) return null;
-
   const coupon = await CouponOffer.findOne({
     code: couponCode.trim().toUpperCase(),
     isActive: true,
@@ -57,6 +56,7 @@ const validateAndApplyCoupon = async (
     status: { $ne: "cancelled" },
   });
 
+
   if (userUsageCount >= coupon.userLimit) {
     throw new Error(`You can only use this coupon ${coupon.userLimit} time(s)`);
   }
@@ -67,14 +67,14 @@ const validateAndApplyCoupon = async (
   }
 
   // Check if user is assigned to this coupon (if users array is populated)
-  if (coupon.users && coupon.users.length > 0) {
-    const isUserAssigned = coupon.users.some(
-      (userId) => userId.toString() === customerId.toString()
-    );
-    if (!isUserAssigned) {
-      throw new Error("This coupon is not available for you");
-    }
-  }
+  // if (coupon.users && coupon.users.length > 0) {
+  //   const isUserAssigned = coupon.users.some(
+  //     (userId) => userId?.toString() === customerId?.toString()
+  //   );
+  //   if (!isUserAssigned) {
+  //     throw new Error("This coupon is not available for you");
+  //   }
+  // }
 
   // Check property type applicability (for admin offers)
   if (coupon.type === "offer" && coupon.propertyTypes) {
@@ -88,7 +88,7 @@ const validateAndApplyCoupon = async (
 
   // Check specific property (for property owner coupons)
   if (coupon.type === "coupon" && coupon.property) {
-    if (coupon.property.toString() !== propertyId.toString()) {
+    if (coupon.property?.toString() !== propertyId?.toString()) {
       throw new Error("This coupon is not applicable for this property");
     }
   }
@@ -518,7 +518,7 @@ const verifyPaymentAndConfirm = async (req, res, next) => {
 
       // Add device ID to devicesUsed array if provided
       if (booking.deviceId) {
-        updateData.$addToSet = { devicesUsed: booking.deviceId };
+        updateData.$addToSet = { devicesUsed: booking.deviceId ,users: booking.customerId};
       }
 
       await CouponOffer.findByIdAndUpdate(booking.coupon.couponId, updateData);
@@ -886,7 +886,6 @@ const getBookingsByOwner = async (req, res, next) => {
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
-    console.log(req.query);
 
     if (!ownerId) return next(new AppErr("Owner ID is required", 400));
 

@@ -72,7 +72,7 @@ const BookingSchema = new mongoose.Schema({
     code: { type: String },
     couponId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Coupon",
+      ref: "CouponOffer",
     },
     discountType: {
       type: String,
