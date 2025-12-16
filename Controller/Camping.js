@@ -369,7 +369,7 @@ const getcampingdaydetails = async (req, res, next) => {
   try {
     const { campingId } = req.params;
     const { date } = req.query; // same as dateStr from your screen
-
+console.log(date)
     if (!date) {
       return next(new AppErr("Date is required in query (YYYY-MM-DD)", 400));
     }
