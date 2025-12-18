@@ -4,7 +4,8 @@ const {
   updateUser,
   getUserById,
   getAvailableProperties,
-  getPropertyById
+  getPropertyById,
+  checkVillaAvailability,
 } = require("../Controller/User");
 
 const UserRouter = express.Router();
@@ -14,5 +15,6 @@ UserRouter.put("/user/update/:id", updateUser);
 UserRouter.get("/user/:id", getUserById);
 UserRouter.get("/properties/available", getAvailableProperties);
 UserRouter.get("/property/:categoryId/:propertyId", getPropertyById);
+UserRouter.get("/villa/check-availability", checkVillaAvailability);
 
 module.exports = { UserRouter };

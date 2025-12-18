@@ -477,10 +477,61 @@ const getPropertyById = async (req, res, next) => {
   }
 };
 
+const checkVillaAvailability = async (req, res, next) => {
+  try {
+    const { propertyId, checkIn, checkOut } = req.body;
+
+    if (!propertyId || !checkIn || !checkOut) {
+      return res.status(400).json({
+        success: false,
+        message: "propertyId, checkIn, checkOut are required",
+      });
+    }
+
+    const villa = await Villa.findOne({
+      _id: propertyId,
+      isapproved: "approved",
+      isLive: true,
+      deletedAt: null,
+    });
+
+    if (!villa) {
+      return res.status(404).json({
+        success: false,
+        message: "Villa not found",
+      });
+    }
+
+    const isBooked = isDateOverlap(
+      villa.bookedDates || [],
+      checkIn,
+      checkOut
+    );
+
+    if (isBooked) {
+      return res.status(200).json({
+        success: false,
+        available: false,
+        message: "Villa is not available for selected dates",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      available: true,
+    });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+};
+
+
 module.exports = {
   loginOrRegisterUser,
   updateUser,
   getUserById,
   getAvailableProperties,
   getPropertyById,
+  checkVillaAvailability
 };

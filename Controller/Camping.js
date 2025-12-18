@@ -369,7 +369,6 @@ const getcampingdaydetails = async (req, res, next) => {
   try {
     const { campingId } = req.params;
     const { date } = req.query; // same as dateStr from your screen
-console.log(date)
     if (!date) {
       return next(new AppErr("Date is required in query (YYYY-MM-DD)", 400));
     }
@@ -499,6 +498,130 @@ console.log(date)
   }
 }
 
+const getDateRangeIST = (checkIn, checkOut) => {
+  const start = moment.utc(checkIn).tz("Asia/Kolkata").startOf("day");
+  const end = moment.utc(checkOut).tz("Asia/Kolkata").startOf("day");
+
+  const dates = [];
+  const curr = start.clone();
+
+  while (curr.isBefore(end)) {
+    dates.push(curr.clone());
+    curr.add(1, "day");
+  }
+
+  return dates; // array of moment dates
+};
+
+
+const checkCampingAvailabilityRange = async (req, res, next) => {
+  try {
+    const { propertyId, checkIn, checkOut, tents: requestedTents } = req.body;
+
+    if (!propertyId || !checkIn || !checkOut || !requestedTents) {
+      return res.status(400).json({
+        success: false,
+        message: "propertyId, checkIn, checkOut, tents are required",
+      });
+    }
+
+    // 🔹 Get all tent docs for this camping
+    const tentDocs = await Tent.find({
+      camping: propertyId,
+      deletedAt: null,
+      isAvailable: true,
+    }).lean();
+
+    if (!tentDocs.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No tents found for this camping",
+      });
+    }
+
+    // Group total tents by type
+    const totalByType = {};
+    tentDocs.forEach((t) => {
+      if (!totalByType[t.tentType]) totalByType[t.tentType] = 0;
+      totalByType[t.tentType] += t.totaltents || 0;
+    });
+
+    // 🔹 Generate nights
+    const nights = getDateRangeIST(checkIn, checkOut);
+
+    // Track minimum availability across nights
+    const minAvailableByType = {};
+
+    for (const night of nights) {
+      const nightStart = night.clone().startOf("day").toDate();
+      const nightEnd = night.clone().endOf("day").toDate();
+
+      // Get bookings overlapping this night
+      const bookings = await Booking.find({
+        propertyType: "Camping",
+        propertyId,
+        status: { $in: ["pending", "confirmed"] },
+        checkIn: { $lt: nightEnd },
+        checkOut: { $gt: nightStart },
+      }).lean();
+
+      // Count booked tents by type
+      const bookedByType = {};
+
+      bookings.forEach((bk) => {
+        bk.items
+          ?.filter((it) => it.unitType === "Tent")
+          .forEach((it) => {
+            const tentDoc = tentDocs.find(
+              (t) => t._id.toString() === it.unitId?.toString()
+            );
+            if (!tentDoc) return;
+
+            const type = tentDoc.tentType;
+            if (!bookedByType[type]) bookedByType[type] = 0;
+            bookedByType[type] += it.quantity || 1;
+          });
+      });
+
+      // Calculate availability for this night
+      Object.keys(totalByType).forEach((type) => {
+        const available =
+          (totalByType[type] || 0) - (bookedByType[type] || 0);
+
+        if (
+          minAvailableByType[type] === undefined ||
+          available < minAvailableByType[type]
+        ) {
+          minAvailableByType[type] = available;
+        }
+      });
+    }
+
+    // 🔹 Validate against requested tents
+    for (const [type, reqQty] of Object.entries(requestedTents)) {
+      if ((minAvailableByType[type] || 0) < reqQty) {
+        return res.status(200).json({
+          success: false,
+          available: false,
+          message: `${type} tents not available for all selected nights`,
+          details: {
+            requested: reqQty,
+            available: minAvailableByType[type] || 0,
+          },
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      available: true,
+    });
+  } catch (err) {
+    console.error("checkCampingAvailabilityRange error:", err);
+    next(new AppErr("Failed to check camping availability", 500));
+  }
+};
+
 
 
 module.exports = {
@@ -512,5 +635,6 @@ module.exports = {
   approveAndUpdateCamping,
   updateCampingTentTypePricing,
   addTentToCamping,
-  getcampingdaydetails
+  getcampingdaydetails,
+  checkCampingAvailabilityRange
 };
