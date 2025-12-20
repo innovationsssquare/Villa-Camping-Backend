@@ -72,8 +72,8 @@ const getUserById = async (req, res, next) => {
   }
 };
 
-const CHECKIN_HOUR = 14;   // 2:00 PM IST
-const CHECKOUT_HOUR = 11;  // 11 AM
+const CHECKIN_HOUR = 14; // 2:00 PM IST
+const CHECKOUT_HOUR = 11; // 11 AM
 const CHECKOUT_MINUTE = 30; // 11:30 AM IST
 
 // Helper function → check date overlap
@@ -109,7 +109,10 @@ const isDateOverlap = (bookings, checkIn, checkOut) => {
 
     // ✅ Overlap check
     // If new checkIn is exactly same as old checkOut → ALLOWED
-    return checkInIST.isBefore(bookingCheckOutIST) && checkOutIST.isAfter(bookingCheckInIST);
+    return (
+      checkInIST.isBefore(bookingCheckOutIST) &&
+      checkOutIST.isAfter(bookingCheckInIST)
+    );
   });
 };
 
@@ -209,7 +212,7 @@ const getAvailableProperties = async (req, res, next) => {
         const cottages = await CottageUnit.find({
           deletedAt: null,
           status: "available",
-          ...(subtype ? { cottageType: subtype } : {}), // ✅ filter at query level
+          ...(subtype ? { cottageType: subtype } : {}),
         }).populate({
           path: "Cottages",
           match: {
@@ -221,30 +224,34 @@ const getAvailableProperties = async (req, res, next) => {
         });
 
         const cottageMap = {};
-        cottages.forEach((cottage) => {
+
+        cottages.forEach((unit) => {
           if (
-            cottage.Cottages &&
-            !isDateOverlap(cottage.bookedDates, checkIn, checkOut)
+            unit.Cottages &&
+            !isDateOverlap(unit.bookedDates, checkIn, checkOut)
           ) {
-            const cottageId = cottage.Cottages._id.toString();
+            const cottageId = unit.Cottages._id.toString();
+
             if (!cottageMap[cottageId]) {
               cottageMap[cottageId] = {
-                ...cottage.Cottages.toObject(),
+                ...unit.Cottages.toObject(),
                 units: [],
               };
             }
+
             cottageMap[cottageId].units.push({
-              _id: cottage._id,
-              subtype: cottage.cottageType,
-              totalUnits: cottage.totalUnits,
-              minCapacity: cottage.minCapacity,
-              maxCapacity: cottage.maxCapacity,
-              pricePerNight: cottage.pricePerNight,
-              amenities: cottage.amenities,
-              images: cottage.cottageImages,
+              _id: unit._id,
+              subtype: unit.cottageType,
+              totalUnits: unit.totalcottage, // ✅ FIX
+              minCapacity: unit.minCapacity,
+              maxCapacity: unit.maxCapacity,
+              pricing: unit.pricing, // ✅ FIX
+              amenities: unit.amenities,
+              images: unit.cottageimages, // ✅ FIX
             });
           }
         });
+
         properties = Object.values(cottageMap);
         break;
 
@@ -410,7 +417,7 @@ const getPropertyById = async (req, res, next) => {
             units: cottageUnits.map((unit) => ({
               _id: unit._id,
               subtype: unit.cottageType,
-              totalUnits: unit.totalcottage, 
+              totalUnits: unit.totalcottage,
               minCapacity: unit.minCapacity,
               maxCapacity: unit.maxCapacity,
               pricePerNight: unit.pricePerNight,
@@ -502,11 +509,7 @@ const checkVillaAvailability = async (req, res, next) => {
       });
     }
 
-    const isBooked = isDateOverlap(
-      villa.bookedDates || [],
-      checkIn,
-      checkOut
-    );
+    const isBooked = isDateOverlap(villa.bookedDates || [], checkIn, checkOut);
 
     if (isBooked) {
       return res.status(200).json({
@@ -526,12 +529,11 @@ const checkVillaAvailability = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   loginOrRegisterUser,
   updateUser,
   getUserById,
   getAvailableProperties,
   getPropertyById,
-  checkVillaAvailability
+  checkVillaAvailability,
 };
