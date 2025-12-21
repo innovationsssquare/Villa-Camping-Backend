@@ -416,6 +416,116 @@ const getCottagedaydetails = async (req, res, next) => {
   }
 };
 
+const checkCottageAvailabilityRange = async (req, res, next) => {
+  try {
+    const { propertyId, checkIn, checkOut, cottages: requestedCottages } = req.body;
+
+    if (!propertyId || !checkIn || !checkOut || !requestedCottages) {
+      return res.status(400).json({
+        success: false,
+        message: "propertyId, checkIn, checkOut, cottages are required",
+      });
+    }
+
+    // 🔹 Get all cottage units for this property
+    const cottageUnits = await CottageUnit.find({
+      Cottages: propertyId,
+      deletedAt: null,
+      status: "available",
+    }).lean();
+
+    if (!cottageUnits.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No cottage units found for this property",
+      });
+    }
+
+    // 🔹 Group total cottages by type
+    const totalByType = {};
+    cottageUnits.forEach((unit) => {
+      if (!totalByType[unit.cottageType]) {
+        totalByType[unit.cottageType] = 0;
+      }
+      totalByType[unit.cottageType] += unit.totalcottage || 0;
+    });
+
+    // 🔹 Generate nights (IST)
+    const nights = getDateRangeIST(checkIn, checkOut);
+
+    // Track minimum availability across nights
+    const minAvailableByType = {};
+
+    for (const night of nights) {
+      const nightStart = night.clone().startOf("day").toDate();
+      const nightEnd = night.clone().endOf("day").toDate();
+
+      // 🔹 Find overlapping bookings
+      const bookings = await Booking.find({
+        propertyType: "Cottage",
+        propertyId,
+        status: { $in: ["pending", "confirmed"] },
+        checkIn: { $lt: nightEnd },
+        checkOut: { $gt: nightStart },
+      }).lean();
+
+      // 🔹 Count booked cottages by type
+      const bookedByType = {};
+
+      bookings.forEach((bk) => {
+        bk.items
+          ?.filter((it) => it.unitType === "Cottage")
+          .forEach((it) => {
+            const unit = cottageUnits.find(
+              (u) => u._id.toString() === it.unitId?.toString()
+            );
+            if (!unit) return;
+
+            const type = unit.cottageType;
+            if (!bookedByType[type]) bookedByType[type] = 0;
+            bookedByType[type] += it.quantity || 1;
+          });
+      });
+
+      // 🔹 Calculate availability for this night
+      Object.keys(totalByType).forEach((type) => {
+        const available =
+          (totalByType[type] || 0) - (bookedByType[type] || 0);
+
+        if (
+          minAvailableByType[type] === undefined ||
+          available < minAvailableByType[type]
+        ) {
+          minAvailableByType[type] = available;
+        }
+      });
+    }
+
+    // 🔹 Validate requested cottages
+    for (const [type, reqQty] of Object.entries(requestedCottages)) {
+      if ((minAvailableByType[type] || 0) < reqQty) {
+        return res.status(200).json({
+          success: false,
+          available: false,
+          message: `${type} cottages not available for all selected nights`,
+          details: {
+            requested: reqQty,
+            available: minAvailableByType[type] || 0,
+          },
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      available: true,
+    });
+  } catch (err) {
+    console.error("checkCottageAvailabilityRange error:", err);
+    next(new AppErr("Failed to check cottage availability", 500));
+  }
+};
+
 
 module.exports = {
   createCottage,
@@ -427,5 +537,6 @@ module.exports = {
   addCottageReview,
   approveAndUpdateCottage,
   updateCottagePricingByType,
-  getCottagedaydetails
+  getCottagedaydetails,
+  checkCottageAvailabilityRange
 };
