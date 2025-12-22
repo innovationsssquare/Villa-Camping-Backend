@@ -416,6 +416,22 @@ const getCottagedaydetails = async (req, res, next) => {
   }
 };
 
+const getDateRangeIST = (checkIn, checkOut) => {
+  const start = moment.utc(checkIn).tz("Asia/Kolkata").startOf("day");
+  const end = moment.utc(checkOut).tz("Asia/Kolkata").startOf("day");
+
+  const dates = [];
+  const curr = start.clone();
+
+  while (curr.isBefore(end)) {
+    dates.push(curr.clone());
+    curr.add(1, "day");
+  }
+
+  return dates; // array of moment dates
+};
+
+
 const checkCottageAvailabilityRange = async (req, res, next) => {
   try {
     const { propertyId, checkIn, checkOut, cottages: requestedCottages } = req.body;
