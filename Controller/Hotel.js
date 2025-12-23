@@ -434,6 +434,132 @@ const getHoteldaydetails = async (req, res, next) => {
   }
 };
 
+
+const getDateRangeIST = (checkIn, checkOut) => {
+  const start = moment.utc(checkIn).tz("Asia/Kolkata").startOf("day");
+  const end = moment.utc(checkOut).tz("Asia/Kolkata").startOf("day");
+
+  const dates = [];
+  const curr = start.clone();
+
+  while (curr.isBefore(end)) {
+    dates.push(curr.clone());
+    curr.add(1, "day");
+  }
+
+  return dates; // array of moment dates
+};
+
+const checkHotelAvailabilityRange = async (req, res, next) => {
+  try {
+    const { propertyId, checkIn, checkOut, rooms: requestedRooms } = req.body;
+
+    if (!propertyId || !checkIn || !checkOut || !requestedRooms) {
+      return res.status(400).json({
+        success: false,
+        message: "propertyId, checkIn, checkOut, rooms are required",
+      });
+    }
+
+    // 🔹 Get all room units for this hotel
+    const roomUnits = await Room.find({
+      hotel: propertyId,
+      deletedAt: null,
+    }).lean();
+
+    if (!roomUnits.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No rooms found for this hotel",
+      });
+    }
+
+    // 🔹 Group total rooms by roomType
+    const totalByType = {};
+    roomUnits.forEach((room) => {
+      if (!totalByType[room.roomType]) {
+        totalByType[room.roomType] = 0;
+      }
+      totalByType[room.roomType] += room.totalRooms || 0;
+    });
+
+    // 🔹 Generate nights in IST
+    const nights = getDateRangeIST(checkIn, checkOut);
+
+    const minAvailableByType = {};
+
+    for (const night of nights) {
+      const nightStart = night.clone().startOf("day").toDate();
+      const nightEnd = night.clone().endOf("day").toDate();
+
+      // 🔹 Find overlapping bookings
+      const bookings = await Booking.find({
+        propertyType: "Hotels",
+        propertyId,
+        status: { $in: ["pending", "confirmed"] },
+        checkIn: { $lt: nightEnd },
+        checkOut: { $gt: nightStart },
+      }).lean();
+
+      // 🔹 Count booked rooms by type
+      const bookedByType = {};
+
+      bookings.forEach((bk) => {
+        bk.items
+          ?.filter((it) => it.unitType === "RoomUnit")
+          .forEach((it) => {
+            const room = roomUnits.find(
+              (r) => r._id.toString() === it.unitId?.toString()
+            );
+            if (!room) return;
+
+            const type = room.roomType;
+            if (!bookedByType[type]) bookedByType[type] = 0;
+            bookedByType[type] += it.quantity || 1;
+          });
+      });
+
+      // 🔹 Calculate availability for this night
+      Object.keys(totalByType).forEach((type) => {
+        const available =
+          (totalByType[type] || 0) - (bookedByType[type] || 0);
+
+        if (
+          minAvailableByType[type] === undefined ||
+          available < minAvailableByType[type]
+        ) {
+          minAvailableByType[type] = available;
+        }
+      });
+    }
+
+    // 🔹 Validate requested rooms
+    for (const [type, reqQty] of Object.entries(requestedRooms)) {
+      if ((minAvailableByType[type] || 0) < reqQty) {
+        return res.status(200).json({
+          success: false,
+          available: false,
+          message: `${type} rooms not available for all selected nights`,
+          details: {
+            requested: reqQty,
+            available: minAvailableByType[type] || 0,
+          },
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      available: true,
+    });
+  } catch (err) {
+    console.error("checkHotelAvailabilityRange error:", err);
+    next(new AppErr("Failed to check hotel availability", 500));
+  }
+};
+
+
+
 module.exports = {
   createHotel,
   getAllHotels,
@@ -445,4 +571,5 @@ module.exports = {
   approveAndUpdateHotel,
   updateHotelPricingByType,
   getHoteldaydetails,
+  checkHotelAvailabilityRange
 };

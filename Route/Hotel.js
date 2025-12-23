@@ -9,7 +9,8 @@ const {
   addHotelReview,
   approveAndUpdateHotel,
   updateHotelPricingByType,
-  getHoteldaydetails
+  getHoteldaydetails,
+  checkHotelAvailabilityRange
 } = require("../Controller/Hotel");
 
 const HotelRouter = express.Router();
@@ -24,5 +25,6 @@ HotelRouter.post("/add/review/:hotelId", addHotelReview);
 HotelRouter.put("/approve-reject/:id", approveAndUpdateHotel);
 HotelRouter.put("/update-hotel-pricing/:hotelId", updateHotelPricingByType);
 HotelRouter.get("/day-details/:hotelId", getHoteldaydetails);
+HotelRouter.post("/check-availability-range", checkHotelAvailabilityRange);
 
 module.exports = { HotelRouter };
