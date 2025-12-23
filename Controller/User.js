@@ -211,7 +211,6 @@ const getAvailableProperties = async (req, res, next) => {
       case "Cottage":
         const cottages = await CottageUnit.find({
           deletedAt: null,
-          status: "available",
           ...(subtype ? { cottageType: subtype } : {}),
         }).populate({
           path: "Cottages",
@@ -226,30 +225,28 @@ const getAvailableProperties = async (req, res, next) => {
         const cottageMap = {};
 
         cottages.forEach((unit) => {
-          if (
-            unit.Cottages &&
-            !isDateOverlap(unit.bookedDates, checkIn, checkOut)
-          ) {
-            const cottageId = unit.Cottages._id.toString();
+          if (!unit.Cottages) return;
 
-            if (!cottageMap[cottageId]) {
-              cottageMap[cottageId] = {
-                ...unit.Cottages.toObject(),
-                units: [],
-              };
-            }
+          const cottageId = unit.Cottages._id.toString();
 
-            cottageMap[cottageId].units.push({
-              _id: unit._id,
-              subtype: unit.cottageType,
-              totalUnits: unit.totalcottage, // ✅ FIX
-              minCapacity: unit.minCapacity,
-              maxCapacity: unit.maxCapacity,
-              pricing: unit.pricing, // ✅ FIX
-              amenities: unit.amenities,
-              images: unit.cottageimages, // ✅ FIX
-            });
+          if (!cottageMap[cottageId]) {
+            cottageMap[cottageId] = {
+              ...unit.Cottages.toObject(),
+              units: [],
+            };
           }
+
+          cottageMap[cottageId].units.push({
+            _id: unit._id,
+            subtype: unit.cottageType,
+            totalUnits: unit.totalcottage,
+            minCapacity: unit.minCapacity,
+            maxCapacity: unit.maxCapacity,
+            pricing: unit.pricing,
+            amenities: unit.amenities,
+            images: unit.cottageimages,
+            status: unit.status,
+          });
         });
 
         properties = Object.values(cottageMap);
