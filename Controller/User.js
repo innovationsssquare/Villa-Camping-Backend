@@ -363,10 +363,10 @@ const getPropertyById = async (req, res, next) => {
 
       case "Hotel":
         const rooms = await Room.find({
-          Hotels: propertyId,
+          hotel: propertyId,
           deletedAt: null,
         }).populate({
-          path: "Hotels",
+          path: "hotel",
           match: {
             _id: propertyId,
             category: categoryId,
@@ -376,14 +376,13 @@ const getPropertyById = async (req, res, next) => {
           },
         });
 
-        if (rooms.length > 0 && rooms[0].Hotels) {
+        if (rooms.length > 0 && rooms[0].hotel) {
           property = {
-            ...rooms[0].Hotels.toObject(),
+            ...rooms[0].hotel.toObject(),
             rooms: rooms.map((room) => ({
               _id: room._id,
               subtype: room.roomType,
               totalRooms: room.totalRooms,
-              minCapacity: room.minCapacity,
               maxCapacity: room.maxCapacity,
               pricePerNight: room.pricePerNight,
               amenities: room.amenities,
