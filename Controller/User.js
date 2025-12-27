@@ -525,6 +525,174 @@ const checkVillaAvailability = async (req, res, next) => {
   }
 };
 
+const getUpcomingWeekendRange = () => {
+  const now = moment.tz("Asia/Kolkata").startOf("day");
+
+  let friday = now.clone().day(5); // Friday
+
+  // If today is Sat/Sun, move to next week's Friday
+  if (now.day() >= 6) {
+    friday = friday.add(1, "week");
+  }
+
+  const sunday = friday.clone().day(7); // Sunday
+
+  return {
+    checkIn: friday.set({ hour: 14, minute: 0 }).toISOString(),
+    checkOut: sunday.set({ hour: 11, minute: 30 }).toISOString(),
+  };
+};
+
+
+const getAvailableThisWeekend = async (req, res, next) => {
+  try {
+    const { categoryId, subtype } = req.query;
+
+    if (!categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId is required",
+      });
+    }
+
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    const { checkIn, checkOut } = getUpcomingWeekendRange();
+    const type = category.name;
+    let properties = [];
+
+    // 🏡 VILLA
+    if (type === "Villa") {
+      properties = await Villa.find({
+        category: categoryId,
+        isapproved: "approved",
+        isLive: true,
+        deletedAt: null,
+        ...(subtype ? { bhkType: subtype } : {}),
+      });
+
+      properties = properties.filter(
+        (villa) => !isDateOverlap(villa.bookedDates || [], checkIn, checkOut)
+      );
+    }
+
+    // 🏨 HOTEL
+    if (type === "Hotel") {
+      const rooms = await Room.find({
+        deletedAt: null,
+        ...(subtype ? { roomType: subtype } : {}),
+      }).populate({
+        path: "hotel",
+        match: {
+          category: categoryId,
+          isapproved: "approved",
+          isLive: true,
+          deletedAt: null,
+        },
+      });
+
+      const hotelMap = {};
+
+      rooms.forEach((room) => {
+        if (
+          room.hotel &&
+          !isDateOverlap(room.bookedDates || [], checkIn, checkOut)
+        ) {
+          const id = room.hotel._id.toString();
+          if (!hotelMap[id]) {
+            hotelMap[id] = { ...room.hotel.toObject(), rooms: [] };
+          }
+          hotelMap[id].rooms.push(room);
+        }
+      });
+
+      properties = Object.values(hotelMap);
+    }
+
+    // 🏕 CAMPING
+    if (type === "Camping") {
+      const tents = await Tent.find({
+        deletedAt: null,
+        status: "available",
+        ...(subtype ? { tentType: subtype } : {}),
+      }).populate({
+        path: "camping",
+        match: {
+          category: categoryId,
+          isapproved: "approved",
+          isLive: true,
+          deletedAt: null,
+        },
+      });
+
+      const campMap = {};
+
+      tents.forEach((tent) => {
+        if (
+          tent.camping &&
+          !isDateOverlap(tent.bookedDates || [], checkIn, checkOut)
+        ) {
+          const id = tent.camping._id.toString();
+          if (!campMap[id]) {
+            campMap[id] = { ...tent.camping.toObject(), tents: [] };
+          }
+          campMap[id].tents.push(tent);
+        }
+      });
+
+      properties = Object.values(campMap);
+    }
+
+    // 🏡 COTTAGE
+    if (type === "Cottage") {
+      const units = await CottageUnit.find({
+        deletedAt: null,
+        ...(subtype ? { cottageType: subtype } : {}),
+      }).populate({
+        path: "Cottages",
+        match: {
+          category: categoryId,
+          isapproved: "approved",
+          isLive: true,
+          deletedAt: null,
+        },
+      });
+
+      const cottageMap = {};
+
+      units.forEach((unit) => {
+        if (!unit.Cottages) return;
+
+        const id = unit.Cottages._id.toString();
+        if (!cottageMap[id]) {
+          cottageMap[id] = { ...unit.Cottages.toObject(), units: [] };
+        }
+        cottageMap[id].units.push(unit);
+      });
+
+      properties = Object.values(cottageMap);
+    }
+
+    res.status(200).json({
+      success: true,
+      weekend: { checkIn, checkOut },
+      total: properties.length,
+      data: properties,
+    });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
+};
+
+
+
 module.exports = {
   loginOrRegisterUser,
   updateUser,
@@ -532,4 +700,5 @@ module.exports = {
   getAvailableProperties,
   getPropertyById,
   checkVillaAvailability,
+  getAvailableThisWeekend
 };
