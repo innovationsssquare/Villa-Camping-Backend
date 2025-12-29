@@ -69,8 +69,12 @@ const getAllVillas = async (req, res, next) => {
 const getVillaById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const villa = await Villa.findOne({ _id: id, deletedAt: null });
-
+    const villa = await Villa.findOne({ _id: id, deletedAt: null })
+      .populate({
+        path: "reviews.userId",
+        select: "fullName email",
+      })
+      .lean(); // 🔥 important
     if (!villa) {
       return next(new AppErr("Villa not found", 404));
     }
