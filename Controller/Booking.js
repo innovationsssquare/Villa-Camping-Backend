@@ -2591,8 +2591,7 @@ const createOfflineHotelBooking = async (req, res, next) => {
 
 const addReview = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const { bookingId, rating, comment, images = [], categories = [] } = req.body;
+    const { bookingId, rating, comment, images = [], categories = [],userId } = req.body;
 
     if (!bookingId || !rating) {
       return next(new AppErr("Booking ID and rating are required", 400));
@@ -2631,10 +2630,10 @@ const addReview = async (req, res, next) => {
         PropertyModel = Camping;
         break;
       case "Hotels":
-        PropertyModel = Hotel;
+        PropertyModel = Hotels;
         break;
       case "Cottages":
-        PropertyModel = Cottage;
+        PropertyModel = Cottages;
         break;
       default:
         return next(new AppErr("Invalid property type", 400));
