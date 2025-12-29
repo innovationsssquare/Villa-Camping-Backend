@@ -2639,6 +2639,8 @@ const addReview = async (req, res, next) => {
         return next(new AppErr("Invalid property type", 400));
     }
 
+
+    
     // 5️⃣ Fetch property
     const property = await PropertyModel.findById(booking?.propertyId);
 
@@ -2655,31 +2657,45 @@ const addReview = async (req, res, next) => {
       return next(new AppErr("You have already reviewed this property", 400));
     }
 
+ const previousTotal = property.totalReviews || 0;
+    const newTotalReviews = previousTotal + 1;
+
+    const newAverageRating =
+      ((property.averageRating || 0) * previousTotal + rating) /
+      newTotalReviews;
+
     // 7️⃣ Push review
-    const newReview = {
-      userId,
-      rating,
-      comment,
-      images,
-      categories,
-    };
+     await PropertyModel.findByIdAndUpdate(
+      booking.propertyId,
+      {
+        $push: {
+          reviews: {
+            userId,
+            rating,
+            comment,
+            images,
+            categories,
+            createdAt: new Date(),
+          },
+        },
+        $set: {
+          averageRating: newAverageRating,
+          totalReviews: newTotalReviews,
+        },
+      },
+      { new: true }
+    );
 
-    property.reviews.push(newReview);
+    // 9️⃣ Optional: lock booking from multiple reviews
+    booking.reviewed = true;
+    await booking.save();
 
-    // 8️⃣ Update rating stats
-    property.totalReviews = property.reviews.length;
-    property.averageRating =
-      property.reviews.reduce((sum, r) => sum + r.rating, 0) /
-      property.totalReviews;
-
-    await property.save();
 
     res.status(201).json({
       success: true,
       message: "Review added successfully",
-      review: newReview,
-      averageRating: property.averageRating,
-      totalReviews: property.totalReviews,
+       averageRating: newAverageRating,
+      totalReviews: newTotalReviews,
     });
   } catch (error) {
     next(error);
