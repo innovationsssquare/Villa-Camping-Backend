@@ -2587,11 +2587,16 @@ const createOfflineHotelBooking = async (req, res, next) => {
   }
 };
 
-
-
 const addReview = async (req, res, next) => {
   try {
-    const { bookingId, rating, comment, images = [], categories = [],userId } = req.body;
+    const {
+      bookingId,
+      rating,
+      comment,
+      images = [],
+      categories = [],
+      userId,
+    } = req.body;
 
     if (!bookingId || !rating) {
       return next(new AppErr("Booking ID and rating are required", 400));
@@ -2609,7 +2614,9 @@ const addReview = async (req, res, next) => {
       !booking.customerId ||
       booking.customerId.toString() !== userId?.toString()
     ) {
-      return next(new AppErr("You are not allowed to review this booking", 403));
+      return next(
+        new AppErr("You are not allowed to review this booking", 403)
+      );
     }
 
     // 3️⃣ Booking must be completed
@@ -2639,8 +2646,6 @@ const addReview = async (req, res, next) => {
         return next(new AppErr("Invalid property type", 400));
     }
 
-
-    
     // 5️⃣ Fetch property
     const property = await PropertyModel.findById(booking?.propertyId);
 
@@ -2650,14 +2655,16 @@ const addReview = async (req, res, next) => {
 
     // 6️⃣ Prevent duplicate review (per booking + user)
     const alreadyReviewed = property.reviews.some(
-      (r) => r.userId?.toString() === userId?.toString()
+      (r) =>
+        r.bookingId?.toString() === bookingId.toString() &&
+        r.userId?.toString() === userId.toString()
     );
 
     if (alreadyReviewed) {
       return next(new AppErr("You have already reviewed this property", 400));
     }
 
- const previousTotal = property.totalReviews || 0;
+    const previousTotal = property.totalReviews || 0;
     const newTotalReviews = previousTotal + 1;
 
     const newAverageRating =
@@ -2665,11 +2672,12 @@ const addReview = async (req, res, next) => {
       newTotalReviews;
 
     // 7️⃣ Push review
-     await PropertyModel.findByIdAndUpdate(
+    await PropertyModel.findByIdAndUpdate(
       booking.propertyId,
       {
         $push: {
           reviews: {
+            bookingId,
             userId,
             rating,
             comment,
@@ -2690,20 +2698,16 @@ const addReview = async (req, res, next) => {
     booking.reviewed = true;
     await booking.save();
 
-
     res.status(201).json({
       success: true,
       message: "Review added successfully",
-       averageRating: newAverageRating,
+      averageRating: newAverageRating,
       totalReviews: newTotalReviews,
     });
   } catch (error) {
     next(error);
   }
 };
-
-
-
 
 module.exports = {
   createBooking,
@@ -2721,5 +2725,5 @@ module.exports = {
   createOfflineCampingBooking,
   createOfflineCottageBooking,
   createOfflineHotelBooking,
-  addReview
+  addReview,
 };

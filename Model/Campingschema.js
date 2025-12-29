@@ -9,7 +9,7 @@ const TentSchema = new mongoose.Schema({
   },
   tentType: {
     type: String,
-    enum: ["Single", "Couple", "Family", "luxury", "treehouse","Deluxe"],
+    enum: ["Single", "Couple", "Family", "luxury", "treehouse", "Deluxe"],
     required: true,
   },
   totaltents: { type: Number, required: true },
@@ -69,12 +69,12 @@ const CampingSchema = new mongoose.Schema({
   },
   coordinates: { type: [Number], required: true },
   location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-   nearbyattractions: [
-      {
-        nearbylocation: { type: String },
-        distance: { type: String },
-      },
-    ],
+  nearbyattractions: [
+    {
+      nearbylocation: { type: String },
+      distance: { type: String },
+    },
+  ],
   topamenities: [String],
 
   amenities: [String],
@@ -124,15 +124,15 @@ const CampingSchema = new mongoose.Schema({
     servicesAndFacilities: [
       {
         title: { type: String, required: true },
-        description: { type: String, required: true }, 
-        time: { type: String }, 
+        description: { type: String, required: true },
+        time: { type: String },
       },
     ],
     scheduleInfo: [
       {
-        label: { type: String }, 
-        time: { type: String }, 
-        note: { type: String }, 
+        label: { type: String },
+        time: { type: String },
+        note: { type: String },
       },
     ],
   },
@@ -198,6 +198,8 @@ const CampingSchema = new mongoose.Schema({
   reviews: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
+
       rating: { type: Number, required: true },
       comment: { type: String },
       images: [String],

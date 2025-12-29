@@ -201,6 +201,8 @@ const VillaSchema = new mongoose.Schema(
     reviews: [
       {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
+
         rating: { type: Number, required: true },
         comment: { type: String },
         images: [String],

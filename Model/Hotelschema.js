@@ -84,7 +84,7 @@ const HotelSchema = new mongoose.Schema(
     amenities: [String],
     coordinates: { type: [Number], required: true },
     location: { type: mongoose.Schema.Types.ObjectId, ref: "Location" },
-   nearbyattractions: [
+    nearbyattractions: [
       {
         nearbylocation: { type: String },
         distance: { type: String },
@@ -163,7 +163,7 @@ const HotelSchema = new mongoose.Schema(
       default: 1000,
     },
 
-      foodOptions: {
+    foodOptions: {
       available: [
         {
           type: String,
@@ -191,6 +191,7 @@ const HotelSchema = new mongoose.Schema(
     reviews: [
       {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
         rating: { type: Number, required: true },
         comment: { type: String },
         images: [String],
