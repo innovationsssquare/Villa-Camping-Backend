@@ -2607,7 +2607,7 @@ const addReview = async (req, res, next) => {
     // 2️⃣ Validate user
     if (
       !booking.customerId ||
-      booking.customerId.toString() !== userId.toString()
+      booking.customerId.toString() !== userId?.toString()
     ) {
       return next(new AppErr("You are not allowed to review this booking", 403));
     }
@@ -2640,7 +2640,7 @@ const addReview = async (req, res, next) => {
     }
 
     // 5️⃣ Fetch property
-    const property = await PropertyModel.findById(booking.propertyId);
+    const property = await PropertyModel.findById(booking?.propertyId);
 
     if (!property) {
       return next(new AppErr("Property not found", 404));
@@ -2648,7 +2648,7 @@ const addReview = async (req, res, next) => {
 
     // 6️⃣ Prevent duplicate review (per booking + user)
     const alreadyReviewed = property.reviews.some(
-      (r) => r.userId.toString() === userId.toString()
+      (r) => r.userId?.toString() === userId?.toString()
     );
 
     if (alreadyReviewed) {
