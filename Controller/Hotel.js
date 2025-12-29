@@ -75,9 +75,13 @@ const getAllHotels = async (req, res, next) => {
 const getHotelById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const hotel = await Hotels.findOne({ _id: id, deletedAt: null }).populate(
-      "rooms"
-    );
+    const hotel = await Hotels.findOne({ _id: id, deletedAt: null })
+      .populate("rooms") // ✅ populate rooms
+      .populate({
+        path: "reviews.userId", // ✅ populate review user
+        select: "fullName  email", // adjust fields if needed
+      })
+      .lean(); // 🔥 important for frontend usage
 
     if (!hotel) return next(new AppErr("Hotel not found", 404));
 
@@ -434,7 +438,6 @@ const getHoteldaydetails = async (req, res, next) => {
   }
 };
 
-
 const getDateRangeIST = (checkIn, checkOut) => {
   const start = moment.utc(checkIn).tz("Asia/Kolkata").startOf("day");
   const end = moment.utc(checkOut).tz("Asia/Kolkata").startOf("day");
@@ -521,8 +524,7 @@ const checkHotelAvailabilityRange = async (req, res, next) => {
 
       // 🔹 Calculate availability for this night
       Object.keys(totalByType).forEach((type) => {
-        const available =
-          (totalByType[type] || 0) - (bookedByType[type] || 0);
+        const available = (totalByType[type] || 0) - (bookedByType[type] || 0);
 
         if (
           minAvailableByType[type] === undefined ||
@@ -558,8 +560,6 @@ const checkHotelAvailabilityRange = async (req, res, next) => {
   }
 };
 
-
-
 module.exports = {
   createHotel,
   getAllHotels,
@@ -571,5 +571,5 @@ module.exports = {
   approveAndUpdateHotel,
   updateHotelPricingByType,
   getHoteldaydetails,
-  checkHotelAvailabilityRange
+  checkHotelAvailabilityRange,
 };

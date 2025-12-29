@@ -81,8 +81,13 @@ const getAllCampings = async (req, res, next) => {
 const getCampingById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const camping = await Camping.findOne({ _id: id, deletedAt: null }).populate("tents");
-
+ const camping = await camping.findOne({ _id: id, deletedAt: null })
+      .populate("tents") // ✅ populate rooms
+      .populate({
+        path: "reviews.userId", // ✅ populate review user
+        select: "fullName  email", // adjust fields if needed
+      })
+      .lean(); // 🔥 important for frontend usage
     if (!camping) return next(new AppErr("Camping not found", 404));
 
     res.status(200).json({ success: true, data: camping });

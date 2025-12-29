@@ -1,4 +1,4 @@
-const { Cottages, CottageUnit  } = require("../Model/Cottageschema");
+const { Cottages, CottageUnit } = require("../Model/Cottageschema");
 const Owner = require("../Model/Ownerschema");
 const AppErr = require("../Services/AppErr");
 const Booking = require("../Model/Bookingschema");
@@ -70,12 +70,12 @@ const createCottage = async (req, res, next) => {
   }
 };
 
-
-
 // Get all cottages (not soft-deleted)
 const getAllCottages = async (req, res, next) => {
   try {
-    const cottages = await Cottages.find({ deletedAt: null }).populate("cottages");
+    const cottages = await Cottages.find({ deletedAt: null }).populate(
+      "cottages"
+    );
     res.status(200).json({ success: true, data: cottages });
   } catch (err) {
     console.error(err);
@@ -89,7 +89,12 @@ const getCottageById = async (req, res, next) => {
     const { id } = req.params;
 
     const cottage = await Cottages.findOne({ _id: id, deletedAt: null })
-      .populate("cottages"); // ✅ Path must match schema ref
+      .populate("cottages") // ✅ populate rooms
+      .populate({
+        path: "reviews.userId", // ✅ populate review user
+        select: "fullName  email", // adjust fields if needed
+      })
+      .lean(); // 🔥 important for frontend usage
 
     if (!cottage) return next(new AppErr("Cottage not found", 404));
 
@@ -99,8 +104,6 @@ const getCottageById = async (req, res, next) => {
     next(new AppErr("Failed to fetch cottage", 500));
   }
 };
-
-
 
 // Update cottage property
 const updateCottage = async (req, res, next) => {
@@ -211,21 +214,26 @@ const addCottageReview = async (req, res, next) => {
 const approveAndUpdateCottage = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, commission, isLive } = req.body; 
+    const { status, commission, isLive } = req.body;
 
     // Validate status
-    if (!['approved', 'rejected'].includes(status)) {
-      return next(new AppErr('Invalid status value. Please use "approved" or "rejected".', 400));
+    if (!["approved", "rejected"].includes(status)) {
+      return next(
+        new AppErr(
+          'Invalid status value. Please use "approved" or "rejected".',
+          400
+        )
+      );
     }
 
     // Validate commission
-    if (commission && typeof commission !== 'number') {
-      return next(new AppErr('Commission should be a number', 400));
+    if (commission && typeof commission !== "number") {
+      return next(new AppErr("Commission should be a number", 400));
     }
 
     // Validate isLive
-    if (typeof isLive !== 'boolean') {
-      return next(new AppErr('isLive should be a boolean value', 400));
+    if (typeof isLive !== "boolean") {
+      return next(new AppErr("isLive should be a boolean value", 400));
     }
 
     // Update villa status, commission, and isLive
@@ -241,15 +249,18 @@ const approveAndUpdateCottage = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: `Cottage has been ${status} and is now ${isLive ? 'live' : 'inactive'} with commission set.`,
+      message: `Cottage has been ${status} and is now ${
+        isLive ? "live" : "inactive"
+      } with commission set.`,
       data: updatedVilla,
     });
   } catch (err) {
     console.error(err);
-    next(new AppErr("Failed to approve, update status, or add commission", 500));
+    next(
+      new AppErr("Failed to approve, update status, or add commission", 500)
+    );
   }
 };
-
 
 const updateCottagePricingByType = async (req, res, next) => {
   try {
@@ -327,7 +338,7 @@ const getCottagedaydetails = async (req, res, next) => {
       propertyType: "Cottages",
       propertyId: cottageId,
       status: { $in: ["pending", "confirmed"] }, // ignore cancelled/completed
-      checkIn: { $lt: dayEnd },  // overlap logic
+      checkIn: { $lt: dayEnd }, // overlap logic
       checkOut: { $gt: dayStart },
     }).lean();
 
@@ -382,9 +393,7 @@ const getCottagedaydetails = async (req, res, next) => {
     // 5) Build booking list for the UI
     const bookingsList = bookings.map((bk) => {
       const unitItem = bk.items.find((it) => it.unitType === "CottageUnit");
-      const unitDoc = unitItem
-        ? unitMap[unitItem.unitId?.toString()]
-        : null;
+      const unitDoc = unitItem ? unitMap[unitItem.unitId?.toString()] : null;
 
       return {
         cottageType: unitDoc?.cottageType || unitItem?.typeName || "Cottages",
@@ -431,10 +440,14 @@ const getDateRangeIST = (checkIn, checkOut) => {
   return dates; // array of moment dates
 };
 
-
 const checkCottageAvailabilityRange = async (req, res, next) => {
   try {
-    const { propertyId, checkIn, checkOut, cottages: requestedCottages } = req.body;
+    const {
+      propertyId,
+      checkIn,
+      checkOut,
+      cottages: requestedCottages,
+    } = req.body;
 
     if (!propertyId || !checkIn || !checkOut || !requestedCottages) {
       return res.status(400).json({
@@ -505,8 +518,7 @@ const checkCottageAvailabilityRange = async (req, res, next) => {
 
       // 🔹 Calculate availability for this night
       Object.keys(totalByType).forEach((type) => {
-        const available =
-          (totalByType[type] || 0) - (bookedByType[type] || 0);
+        const available = (totalByType[type] || 0) - (bookedByType[type] || 0);
 
         if (
           minAvailableByType[type] === undefined ||
@@ -542,7 +554,6 @@ const checkCottageAvailabilityRange = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   createCottage,
   getAllCottages,
@@ -554,5 +565,5 @@ module.exports = {
   approveAndUpdateCottage,
   updateCottagePricingByType,
   getCottagedaydetails,
-  checkCottageAvailabilityRange
+  checkCottageAvailabilityRange,
 };
