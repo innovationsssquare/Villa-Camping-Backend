@@ -2587,6 +2587,109 @@ const createOfflineHotelBooking = async (req, res, next) => {
   }
 };
 
+
+
+const addReview = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { bookingId, rating, comment, images = [], categories = [] } = req.body;
+
+    if (!bookingId || !rating) {
+      return next(new AppErr("Booking ID and rating are required", 400));
+    }
+
+    // 1️⃣ Get booking
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return next(new AppErr("Booking not found", 404));
+    }
+
+    // 2️⃣ Validate user
+    if (
+      !booking.customerId ||
+      booking.customerId.toString() !== userId.toString()
+    ) {
+      return next(new AppErr("You are not allowed to review this booking", 403));
+    }
+
+    // 3️⃣ Booking must be completed
+    if (booking.status !== "completed") {
+      return next(
+        new AppErr("You can review only after booking is completed", 400)
+      );
+    }
+
+    // 4️⃣ Resolve property model (NO MAP)
+    let PropertyModel;
+
+    switch (booking.propertyType) {
+      case "Villa":
+        PropertyModel = Villa;
+        break;
+      case "Camping":
+        PropertyModel = Camping;
+        break;
+      case "Hotels":
+        PropertyModel = Hotel;
+        break;
+      case "Cottages":
+        PropertyModel = Cottage;
+        break;
+      default:
+        return next(new AppErr("Invalid property type", 400));
+    }
+
+    // 5️⃣ Fetch property
+    const property = await PropertyModel.findById(booking.propertyId);
+
+    if (!property) {
+      return next(new AppErr("Property not found", 404));
+    }
+
+    // 6️⃣ Prevent duplicate review (per booking + user)
+    const alreadyReviewed = property.reviews.some(
+      (r) => r.userId.toString() === userId.toString()
+    );
+
+    if (alreadyReviewed) {
+      return next(new AppErr("You have already reviewed this property", 400));
+    }
+
+    // 7️⃣ Push review
+    const newReview = {
+      userId,
+      rating,
+      comment,
+      images,
+      categories,
+    };
+
+    property.reviews.push(newReview);
+
+    // 8️⃣ Update rating stats
+    property.totalReviews = property.reviews.length;
+    property.averageRating =
+      property.reviews.reduce((sum, r) => sum + r.rating, 0) /
+      property.totalReviews;
+
+    await property.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Review added successfully",
+      review: newReview,
+      averageRating: property.averageRating,
+      totalReviews: property.totalReviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
 module.exports = {
   createBooking,
   verifyPaymentAndConfirm,
@@ -2603,4 +2706,5 @@ module.exports = {
   createOfflineCampingBooking,
   createOfflineCottageBooking,
   createOfflineHotelBooking,
+  addReview
 };
