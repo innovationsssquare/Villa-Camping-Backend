@@ -717,7 +717,7 @@ const getMapProperties = async (req, res, next) => {
 
     const modelsToQuery = category
       ? [MODEL_MAP[category]]
-      : [Villa, Camping, Cottage, Hotel];
+      : [Villa, Camping, Cottages, Hotels];
 
     let results = [];
 
