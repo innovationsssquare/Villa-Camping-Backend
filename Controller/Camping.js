@@ -81,7 +81,7 @@ const getAllCampings = async (req, res, next) => {
 const getCampingById = async (req, res, next) => {
   try {
     const { id } = req.params;
- const camping = await camping.findOne({ _id: id, deletedAt: null })
+ const camping = await Camping.findOne({ _id: id, deletedAt: null })
       .populate("tents") // ✅ populate rooms
       .populate({
         path: "reviews.userId", // ✅ populate review user

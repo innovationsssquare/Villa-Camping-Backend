@@ -2,9 +2,10 @@ const User = require("../Model/Userschema");
 const AppErr = require("../Services/AppErr");
 const Villa = require("../Model/Villaschema");
 const Booking = require("../Model/Bookingschema");
-const Camping = require("../Model/Campingschema");
-const Cottages = require("../Model/Cottageschema");
-const Hotel = require("../Model/Hotelschema");
+const {Camping} = require("../Model/Campingschema");
+const {Cottages} = require("../Model/Cottageschema");
+const {Hotels} = require("../Model/Hotelschema");
+const Location = require("../Model/Locationschema");
 const Category = require("../Model/Categoryschema");
 const { Room } = require("../Model/Hotelschema");
 const { CottageUnit } = require("../Model/Cottageschema");
@@ -691,6 +692,83 @@ const getAvailableThisWeekend = async (req, res, next) => {
   }
 };
 
+const MODEL_MAP = {
+  villa: Villa,
+  camping: Camping,
+  cottage: Cottages,
+  hotel: Hotels,
+};
+
+const getMapProperties = async (req, res, next) => {
+  try {
+    const { locationId, category } = req.query;
+
+    if (!locationId) {
+      return res.status(400).json({ message: "locationId is required" });
+    }
+
+    const location = await Location.findById(locationId).select(
+      "name coordinates"
+    );
+
+    if (!location) {
+      return res.status(404).json({ message: "Location not found" });
+    }
+
+    const modelsToQuery = category
+      ? [MODEL_MAP[category]]
+      : [Villa, Camping, Cottage, Hotel];
+
+    let results = [];
+
+    for (const Model of modelsToQuery) {
+      if (!Model || typeof Model.find !== "function") {
+        console.error("❌ Invalid model:", Model);
+        continue;
+      }
+
+      // 🔍 DEBUG (keep once)
+      const total = await Model.countDocuments({ location: locationId });
+      console.log(Model.modelName, "TOTAL:", total);
+
+      const items = await Model.find({
+        location: locationId,
+        isLive: true,
+        isapproved: "approved",
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+      })
+        .populate("category", "name")
+        .select("name pricing coordinates images maxCapacity category");
+
+      results.push(
+        ...items.map((item) => ({
+          id: item._id,
+          title: item.name,
+          price: item.pricing,
+          coordinates: item.coordinates,
+          category: item.category?.name,
+          location: location.name,
+          image: item.images?.[0],
+          capacity: item.maxCapacity,
+        }))
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      location: {
+        id: location._id,
+        name: location.name,
+        coordinates: location.coordinates,
+      },
+      count: results.length,
+      data: results,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 
 module.exports = {
@@ -700,5 +778,6 @@ module.exports = {
   getAvailableProperties,
   getPropertyById,
   checkVillaAvailability,
-  getAvailableThisWeekend
+  getAvailableThisWeekend,
+  getMapProperties
 };

@@ -7,6 +7,7 @@ const {
   getPropertyById,
   checkVillaAvailability,
   getAvailableThisWeekend,
+  getMapProperties,
 } = require("../Controller/User");
 
 const UserRouter = express.Router();
@@ -18,5 +19,6 @@ UserRouter.get("/properties/available", getAvailableProperties);
 UserRouter.get("/property/:categoryId/:propertyId", getPropertyById);
 UserRouter.get("/villa/check-availability", checkVillaAvailability);
 UserRouter.get("/available-this-weekend", getAvailableThisWeekend);
+UserRouter.get("/map/properties", getMapProperties);
 
 module.exports = { UserRouter };

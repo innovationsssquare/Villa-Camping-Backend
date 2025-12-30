@@ -13,7 +13,6 @@ const LocationSchema = new mongoose.Schema(
       required: true,
     },
     coordinates: {
-      // [longitude, latitude] to match your villa coordinates
       type: [Number],
       required: true,
     },
