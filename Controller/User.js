@@ -692,67 +692,83 @@ const getAvailableThisWeekend = async (req, res, next) => {
   }
 };
 
-const MODEL_MAP = {
-  villa: Villa,
-  camping: Camping,
-  cottage: Cottages,
-  hotel: Hotels,
-};
+
 
 const getMapProperties = async (req, res, next) => {
   try {
-    const { locationId, category } = req.query;
-
+    const { locationId, categoryId } = req.query;
+console.log("query",req.query)
     if (!locationId) {
-      return res.status(400).json({ message: "locationId is required" });
+      return res.status(400).json({
+        success: false,
+        message: "locationId is required",
+      });
     }
 
+    // 🔹 Validate location
     const location = await Location.findById(locationId).select(
       "name coordinates"
     );
 
     if (!location) {
-      return res.status(404).json({ message: "Location not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Location not found",
+      });
     }
 
-    const modelsToQuery = category
-      ? [MODEL_MAP[category]]
-      : [Villa, Camping, Cottages, Hotels];
+    // 🔹 Base filter (COMMON FOR ALL)
+    const baseFilter = {
+      location: locationId,
+      isLive: true,
+      isapproved: "approved",
+      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    };
 
-    let results = [];
+    // 🔹 Optional category filter
+    if (categoryId) {
+      baseFilter.category = categoryId;
+    }
 
-    for (const Model of modelsToQuery) {
-      if (!Model || typeof Model.find !== "function") {
-        console.error("❌ Invalid model:", Model);
-        continue;
-      }
-
-      // 🔍 DEBUG (keep once)
-      const total = await Model.countDocuments({ location: locationId });
-      console.log(Model.modelName, "TOTAL:", total);
-
-      const items = await Model.find({
-        location: locationId,
-        isLive: true,
-        isapproved: "approved",
-        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-      })
+    // 🔹 Fetch from all property models
+    const [villas, campings, cottages, hotels] = await Promise.all([
+      Villa.find(baseFilter)
         .populate("category", "name")
-        .select("name pricing coordinates images maxCapacity category");
+        .select("name pricing coordinates images category"),
 
-      results.push(
-        ...items.map((item) => ({
-          id: item._id,
-          title: item.name,
-          price: item.pricing,
-          coordinates: item.coordinates,
-          category: item.category?.name,
-          location: location.name,
-          image: item.images?.[0],
-          capacity: item.maxCapacity,
-        }))
-      );
-    }
+      Camping.find(baseFilter)
+        .populate("category", "name")
+        .select("name pricing coordinates images category"),
+
+      Cottages.find(baseFilter)
+        .populate("category", "name")
+        .select("name pricing coordinates images category"),
+
+      Hotels.find(baseFilter)
+        .populate("category", "name")
+        .select("name pricing coordinates images category"),
+    ]);
+
+    // 🔹 Normalize response (VERY IMPORTANT)
+    const normalize = (items, type) =>
+      items.map((item) => ({
+        id: item._id,
+        title: item.name,
+        price: item.pricing,
+        coordinates: item.coordinates,
+        image: item.images?.[0],
+        category: item.category?.name,
+        categoryId: item.category?._id,
+        type, // villa | camping | cottage | hotel
+        location: location.name,
+      }));
+
+    const data = [
+      ...normalize(villas, "villa"),
+      ...normalize(campings, "camping"),
+      ...normalize(cottages, "cottage"),
+      ...normalize(hotels, "hotel"),
+    ];
 
     return res.status(200).json({
       success: true,
@@ -761,14 +777,13 @@ const getMapProperties = async (req, res, next) => {
         name: location.name,
         coordinates: location.coordinates,
       },
-      count: results.length,
-      data: results,
+      count: data.length,
+      data,
     });
   } catch (err) {
     next(err);
   }
 };
-
 
 
 module.exports = {
