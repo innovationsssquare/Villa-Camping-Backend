@@ -147,10 +147,180 @@ const deleteLocation = async (req, res, next) => {
   }
 };
 
+const getLocationHighlights = async (req, res, next) => {
+  try {
+    const locations = await Location.aggregate([
+      // ---------------- VILLAS ----------------
+      {
+        $lookup: {
+          from: "villas",
+          localField: "_id",
+          foreignField: "location",
+          as: "villas",
+          pipeline: [
+            { $match: { deletedAt: null, isLive: true } },
+            {
+              $project: {
+                averageRating: 1,
+                totalReviews: 1,
+              },
+            },
+          ],
+        },
+      },
+
+      // ---------------- HOTELS ----------------
+      {
+        $lookup: {
+          from: "hotels",
+          localField: "_id",
+          foreignField: "location",
+          as: "hotels",
+          pipeline: [
+            { $match: { deletedAt: null, isLive: true } },
+            {
+              $project: {
+                averageRating: 1,
+                totalReviews: 1,
+              },
+            },
+          ],
+        },
+      },
+
+      // ---------------- COTTAGES ----------------
+      {
+        $lookup: {
+          from: "cottages",
+          localField: "_id",
+          foreignField: "location",
+          as: "cottages",
+          pipeline: [
+            { $match: { deletedAt: null, isLive: true } },
+            {
+              $project: {
+                averageRating: 1,
+                totalReviews: 1,
+              },
+            },
+          ],
+        },
+      },
+
+      // ---------------- CAMPINGS ----------------
+      {
+        $lookup: {
+          from: "campings",
+          localField: "_id",
+          foreignField: "location",
+          as: "campings",
+          pipeline: [
+            { $match: { deletedAt: null, isLive: true } },
+            {
+              $project: {
+                averageRating: 1,
+                totalReviews: 1,
+              },
+            },
+          ],
+        },
+      },
+
+      // ---------------- MERGE ALL PROPERTIES ----------------
+      {
+        $addFields: {
+          allProperties: {
+            $concatArrays: ["$villas", "$hotels", "$cottages", "$campings"],
+          },
+        },
+      },
+
+      // ---------------- PROPERTY COUNT ----------------
+      {
+        $addFields: {
+          properties: { $size: "$allProperties" },
+        },
+      },
+
+      // ---------------- RATING CALCULATION ----------------
+      {
+        $addFields: {
+          ratingStats: {
+            $reduce: {
+              input: "$allProperties",
+              initialValue: { totalScore: 0, totalReviews: 0 },
+              in: {
+                totalScore: {
+                  $add: [
+                    "$$value.totalScore",
+                    {
+                      $multiply: [
+                        "$$this.averageRating",
+                        "$$this.totalReviews",
+                      ],
+                    },
+                  ],
+                },
+                totalReviews: {
+                  $add: ["$$value.totalReviews", "$$this.totalReviews"],
+                },
+              },
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          rating: {
+            $cond: [
+              { $gt: ["$ratingStats.totalReviews", 0] },
+              {
+                $round: [
+                  {
+                    $divide: [
+                      "$ratingStats.totalScore",
+                      "$ratingStats.totalReviews",
+                    ],
+                  },
+                  1,
+                ],
+              },
+              null,
+            ],
+          },
+        },
+      },
+
+      // ---------------- CLEAN RESPONSE ----------------
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          properties: 1,
+          rating: 1,
+          isPopular: 1,
+        },
+      },
+
+      // ---------------- SORT ----------------
+      { $sort: { isPopular: -1, properties: -1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: locations,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createLocation,
   getLocations,
   getLocationById,
   updateLocation,
   deleteLocation,
+  getLocationHighlights,
 };

@@ -697,7 +697,6 @@ const getAvailableThisWeekend = async (req, res, next) => {
 const getMapProperties = async (req, res, next) => {
   try {
     const { locationId, categoryId } = req.query;
-console.log("query",req.query)
     if (!locationId) {
       return res.status(400).json({
         success: false,
