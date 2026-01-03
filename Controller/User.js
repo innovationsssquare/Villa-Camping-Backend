@@ -849,6 +849,68 @@ const getTrendingReels = async (req, res, next) => {
   }
 };
 
+const LIMIT_DEFAULT = 12;
+
+const buildPipeline = (propertyType) => [
+  { $match: { isLive: true, deletedAt: null, "reviews.0": { $exists: true } } },
+
+  { $unwind: "$reviews" },
+
+  {
+    $project: {
+      _id: "$reviews._id",
+      rating: "$reviews.rating",
+      review: "$reviews.comment",
+      isTopReview: "$reviews.isTopReview",
+      createdAt: "$reviews.createdAt",
+
+      propertyName: "$name",
+      propertyImage: { $arrayElemAt: ["$images", 0] },
+
+      userId: "$reviews.userId",
+    },
+  },
+];
+
+const getReviewHighlights = async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit) || LIMIT_DEFAULT;
+
+    const [villas, hotels, cottages, campings] = await Promise.all([
+      Villa.aggregate(buildPipeline("villa")),
+      Hotels.aggregate(buildPipeline("hotel")),
+      Cottages.aggregate(buildPipeline("cottage")),
+      Camping.aggregate(buildPipeline("camping")),
+    ]);
+
+    const reviews = [...villas, ...hotels, ...cottages, ...campings]
+      .sort((a, b) => {
+        if (a.isTopReview !== b.isTopReview) {
+          return b.isTopReview - a.isTopReview;
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      })
+      .slice(0, limit)
+      .map((r) => ({
+        id: r._id,
+        name: "Guest", // can be replaced with populated user later
+        location: "India",
+        rating: r.rating,
+        review: r.review,
+        propertyName: r.propertyName,
+        propertyImage: r.propertyImage,
+        userImage: null,
+      }));
+
+    res.status(200).json({
+      success: true,
+      data: reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 module.exports = {
@@ -860,5 +922,6 @@ module.exports = {
   checkVillaAvailability,
   getAvailableThisWeekend,
   getMapProperties,
-  getTrendingReels
+  getTrendingReels,
+  getReviewHighlights
 };

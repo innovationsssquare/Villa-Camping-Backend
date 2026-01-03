@@ -8,7 +8,8 @@ const {
   checkVillaAvailability,
   getAvailableThisWeekend,
   getMapProperties,
-  getTrendingReels
+  getTrendingReels,
+  getReviewHighlights
 } = require("../Controller/User");
 
 const UserRouter = express.Router();
@@ -22,5 +23,6 @@ UserRouter.get("/villa/check-availability", checkVillaAvailability);
 UserRouter.get("/available-this-weekend", getAvailableThisWeekend);
 UserRouter.get("/map/properties", getMapProperties);
 UserRouter.get("/reels/trending", getTrendingReels);
+UserRouter.get("/reviews/highlights", getReviewHighlights);
 
 module.exports = { UserRouter };
