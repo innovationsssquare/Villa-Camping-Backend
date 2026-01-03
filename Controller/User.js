@@ -784,6 +784,72 @@ const getMapProperties = async (req, res, next) => {
   }
 };
 
+const getTrendingReels = async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit) || 12;
+
+    const pipeline = [
+      {
+        $match: {
+          reelVideo: { $exists: true, $ne: "" },
+          isLive: true,
+          deletedAt: null,
+        },
+      },
+      {
+        $project: {
+          title: "$name",
+          videoUrl: "$reelVideo",
+          image: { $arrayElemAt: ["$images", 0] },
+          propertyType: { $literal: "" },
+          author: "$name",
+          createdAt: 1,
+        },
+      },
+    ];
+
+    const [villas, hotels, cottages, campings] = await Promise.all([
+      Villa.aggregate([
+        ...pipeline,
+        { $addFields: { propertyType: "villa" } },
+      ]),
+      Hotels.aggregate([
+        ...pipeline,
+        { $addFields: { propertyType: "hotel" } },
+      ]),
+      Cottages.aggregate([
+        ...pipeline,
+        { $addFields: { propertyType: "cottage" } },
+      ]),
+      Camping.aggregate([
+        ...pipeline,
+        { $addFields: { propertyType: "camping" } },
+      ]),
+    ]);
+
+    const reels = [...villas, ...hotels, ...cottages, ...campings]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, limit)
+      .map((item, index) => ({
+        id: item._id,
+        title: item.title,
+        author: item.author,
+        views: `${Math.floor(Math.random() * 10 + 1)}K Views`, // placeholder
+        image: item.image,
+        videoUrl: item.videoUrl,
+        propertyType: item.propertyType,
+      }));
+
+    res.status(200).json({
+      success: true,
+      data: reels,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 module.exports = {
   loginOrRegisterUser,
@@ -793,5 +859,6 @@ module.exports = {
   getPropertyById,
   checkVillaAvailability,
   getAvailableThisWeekend,
-  getMapProperties
+  getMapProperties,
+  getTrendingReels
 };
