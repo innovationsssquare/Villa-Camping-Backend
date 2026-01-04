@@ -2,9 +2,9 @@ const User = require("../Model/Userschema");
 const AppErr = require("../Services/AppErr");
 const Villa = require("../Model/Villaschema");
 const Booking = require("../Model/Bookingschema");
-const {Camping} = require("../Model/Campingschema");
-const {Cottages} = require("../Model/Cottageschema");
-const {Hotels} = require("../Model/Hotelschema");
+const { Camping } = require("../Model/Campingschema");
+const { Cottages } = require("../Model/Cottageschema");
+const { Hotels } = require("../Model/Hotelschema");
 const Location = require("../Model/Locationschema");
 const Category = require("../Model/Categoryschema");
 const { Room } = require("../Model/Hotelschema");
@@ -544,7 +544,6 @@ const getUpcomingWeekendRange = () => {
   };
 };
 
-
 const getAvailableThisWeekend = async (req, res, next) => {
   try {
     const { categoryId, subtype } = req.query;
@@ -692,8 +691,6 @@ const getAvailableThisWeekend = async (req, res, next) => {
   }
 };
 
-
-
 const getMapProperties = async (req, res, next) => {
   try {
     const { locationId, categoryId } = req.query;
@@ -809,10 +806,7 @@ const getTrendingReels = async (req, res, next) => {
     ];
 
     const [villas, hotels, cottages, campings] = await Promise.all([
-      Villa.aggregate([
-        ...pipeline,
-        { $addFields: { propertyType: "villa" } },
-      ]),
+      Villa.aggregate([...pipeline, { $addFields: { propertyType: "villa" } }]),
       Hotels.aggregate([
         ...pipeline,
         { $addFields: { propertyType: "hotel" } },
@@ -851,11 +845,22 @@ const getTrendingReels = async (req, res, next) => {
 
 const LIMIT_DEFAULT = 12;
 
-const buildPipeline = (propertyType) => [
+const buildPipeline = () => [
   { $match: { isLive: true, deletedAt: null, "reviews.0": { $exists: true } } },
-
   { $unwind: "$reviews" },
-
+   {
+    $lookup: {
+      from: "users", // 🔑 correct collection
+      localField: "reviews.userId",
+      foreignField: "_id",
+      as: "user",
+    },
+  },
+   {
+    $addFields: {
+      user: { $arrayElemAt: ["$user", 0] },
+    },
+  },
   {
     $project: {
       _id: "$reviews._id",
@@ -863,55 +868,48 @@ const buildPipeline = (propertyType) => [
       review: "$reviews.comment",
       isTopReview: "$reviews.isTopReview",
       createdAt: "$reviews.createdAt",
-
+      reviewImage: { $arrayElemAt: ["$reviews.images", 0] },
       propertyName: "$name",
-      propertyImage: { $arrayElemAt: ["$images", 0] },
-
-      userId: "$reviews.userId",
+       username: {
+        $ifNull: ["$user.fullName", "Guest"],
+      },
     },
   },
 ];
 
 const getReviewHighlights = async (req, res, next) => {
   try {
-    const limit = Number(req.query.limit) || LIMIT_DEFAULT;
+    const limit = Number(req.query.limit) || 12;
 
     const [villas, hotels, cottages, campings] = await Promise.all([
-      Villa.aggregate(buildPipeline("villa")),
-      Hotels.aggregate(buildPipeline("hotel")),
-      Cottages.aggregate(buildPipeline("cottage")),
-      Camping.aggregate(buildPipeline("camping")),
+      Villa.aggregate(buildPipeline()),
+      Hotels.aggregate(buildPipeline()),
+      Cottages.aggregate(buildPipeline()),
+      Camping.aggregate(buildPipeline()),
     ]);
 
     const reviews = [...villas, ...hotels, ...cottages, ...campings]
-      .sort((a, b) => {
-        if (a.isTopReview !== b.isTopReview) {
-          return b.isTopReview - a.isTopReview;
-        }
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      })
+      .sort((a, b) =>
+        a.isTopReview !== b.isTopReview
+          ? b.isTopReview - a.isTopReview
+          : new Date(b.createdAt) - new Date(a.createdAt)
+      )
       .slice(0, limit)
       .map((r) => ({
         id: r._id,
-        name: "Guest", // can be replaced with populated user later
+        username: r.username || "Guest",
         location: "India",
         rating: r.rating,
         review: r.review,
+        reviewImage: r.reviewImage || null,
         propertyName: r.propertyName,
-        propertyImage: r.propertyImage,
-        userImage: null,
       }));
 
-    res.status(200).json({
-      success: true,
-      data: reviews,
-    });
-  } catch (error) {
-    next(error);
+    res.json({ success: true, data: reviews });
+  } catch (err) {
+    next(err);
   }
 };
-
-
 
 module.exports = {
   loginOrRegisterUser,
@@ -923,5 +921,5 @@ module.exports = {
   getAvailableThisWeekend,
   getMapProperties,
   getTrendingReels,
-  getReviewHighlights
+  getReviewHighlights,
 };
