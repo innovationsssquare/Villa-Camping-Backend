@@ -9,7 +9,8 @@ const {
   getAvailableThisWeekend,
   getMapProperties,
   getTrendingReels,
-  getReviewHighlights
+  getReviewHighlights,
+  getReels
 } = require("../Controller/User");
 
 const UserRouter = express.Router();
@@ -24,5 +25,6 @@ UserRouter.get("/available-this-weekend", getAvailableThisWeekend);
 UserRouter.get("/map/properties", getMapProperties);
 UserRouter.get("/reels/trending", getTrendingReels);
 UserRouter.get("/reviews/highlights", getReviewHighlights);
+UserRouter.get("/api/reels", getReels);
 
 module.exports = { UserRouter };

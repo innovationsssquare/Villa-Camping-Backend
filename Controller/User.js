@@ -11,6 +11,7 @@ const { Room } = require("../Model/Hotelschema");
 const { CottageUnit } = require("../Model/Cottageschema");
 const { Tent } = require("../Model/Campingschema");
 const moment = require("moment-timezone");
+const redis = require("../Services/redis");
 
 // Login or Register
 const loginOrRegisterUser = async (req, res, next) => {
@@ -848,7 +849,7 @@ const LIMIT_DEFAULT = 12;
 const buildPipeline = () => [
   { $match: { isLive: true, deletedAt: null, "reviews.0": { $exists: true } } },
   { $unwind: "$reviews" },
-   {
+  {
     $lookup: {
       from: "users", // 🔑 correct collection
       localField: "reviews.userId",
@@ -856,7 +857,7 @@ const buildPipeline = () => [
       as: "user",
     },
   },
-   {
+  {
     $addFields: {
       user: { $arrayElemAt: ["$user", 0] },
     },
@@ -870,7 +871,7 @@ const buildPipeline = () => [
       createdAt: "$reviews.createdAt",
       reviewImage: { $arrayElemAt: ["$reviews.images", 0] },
       propertyName: "$name",
-       username: {
+      username: {
         $ifNull: ["$user.fullName", "Guest"],
       },
     },
@@ -911,6 +912,125 @@ const getReviewHighlights = async (req, res, next) => {
   }
 };
 
+const LIMIT_DEFAULTT = 10;
+
+
+const getReels = async (req, res) => {
+  const { cursor, limit = LIMIT_DEFAULTT } = req.query;
+
+  const cacheKey = `reels:feed:v1:${cursor || "first"}:${limit}`;
+
+  try {
+    /* -------------------- 1️⃣ Redis -------------------- */
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json({
+        success: true,
+        source: "redis",
+        ...JSON.parse(cached),
+      });
+    }
+
+    /* -------------------- 2️⃣ Cursor -------------------- */
+    const cursorFilter = cursor
+      ? { _id: { $lt: new mongoose.Types.ObjectId(cursor) } }
+      : {};
+
+    /* -------------------- 3️⃣ Base pipeline -------------------- */
+    const basePipeline = [
+      {
+        $match: {
+          isLive: true,
+          deletedAt: null,
+          reelVideo: { $exists: true, $ne: "" },
+          ...cursorFilter,
+        },
+      },
+      { $sort: { _id: -1 } },
+      { $limit: Number(limit) },
+      {
+        $lookup: {
+          from: "locations",
+          localField: "location",
+          foreignField: "_id",
+          as: "locationData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$locationData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ];
+
+    /* -------------------- 4️⃣ Property-specific pipelines -------------------- */
+    const projectCommon = (type) => ({
+      $project: {
+        id: "$_id",
+        name: "$name",
+        videoUrl: "$reelVideo",
+        thumbnail: { $arrayElemAt: ["$images", 0] },
+
+        rating: { $ifNull: ["$averageRating", 4.5] },
+        reviews: { $ifNull: ["$totalReviews", 0] },
+
+        location: {
+          $cond: [
+            { $ifNull: ["$locationData.name", false] },
+            "$locationData.name",
+            "Lonavala",
+          ],
+        },
+
+        guests: { $ifNull: ["$maxCapacity", 6] },
+        price: {
+          weekday: "$pricing.weekdayPrice",
+          weekend: "$pricing.weekendPrice",
+        },
+        amenities: { $slice: ["$amenities", 3] },
+
+        propertyType: { $literal: type },
+        createdAt: "$createdAt",
+      },
+    });
+
+    const [villas, cottages, hotels, campings] = await Promise.all([
+      Villa.aggregate([...basePipeline, projectCommon("villa")]),
+      Cottages.aggregate([...basePipeline, projectCommon("cottage")]),
+      Hotels.aggregate([...basePipeline, projectCommon("hotel")]),
+      Camping.aggregate([...basePipeline, projectCommon("camping")]),
+    ]);
+
+    /* -------------------- 5️⃣ Merge + rank -------------------- */
+    const reels = [...villas, ...cottages, ...hotels, ...campings].sort(
+      (a, b) => b.createdAt - a.createdAt
+    ); // stable
+
+    const nextCursor = reels.at(-1)?.id || null;
+
+    const response = {
+      data: reels,
+      nextCursor,
+    };
+
+    /* -------------------- 6️⃣ Cache -------------------- */
+    await redis.setex(cacheKey, 120, JSON.stringify(response));
+
+    res.json({
+      success: true,
+      source: "mongo",
+      ...response,
+    });
+  } catch (err) {
+    console.error("Reels error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch reels",
+    });
+  }
+};
+
 module.exports = {
   loginOrRegisterUser,
   updateUser,
@@ -922,4 +1042,5 @@ module.exports = {
   getMapProperties,
   getTrendingReels,
   getReviewHighlights,
+  getReels,
 };
