@@ -57,6 +57,7 @@ const VillaSchema = new mongoose.Schema(
           "Ideal for Families",
           "Beachfront",
           "Ideal for Groups",
+          "Lake View"
         ],
       },
     ],
