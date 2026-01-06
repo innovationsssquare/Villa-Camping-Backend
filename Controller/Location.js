@@ -6,10 +6,10 @@ const AppErr = require("../Services/AppErr");
  */
 const createLocation = async (req, res, next) => {
   try {
-    const { name, type, coordinates } = req.body;
+    const { name, type, coordinates,coverImage } = req.body;
     // basic validation
-    if (!name || !type || !coordinates) {
-      return next(new AppErr("name, type and coordinates are required", 400));
+    if (!name || !type || !coordinates || !coverImage) {
+      return next(new AppErr("name, type and image coordinates are required", 400));
     }
 
     // avoid duplicate name
