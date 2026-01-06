@@ -300,6 +300,7 @@ const getLocationHighlights = async (req, res, next) => {
           properties: 1,
           rating: 1,
           isPopular: 1,
+          coverImage:1
         },
       },
 
