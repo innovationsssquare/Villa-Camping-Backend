@@ -20,6 +20,8 @@ const { LocationRouter } = require("./Route/Location");
 const { NotificationRouter } = require("./Route/Notification");
 const { PayoutRouter } = require("./Route/Payout");
 const { SupportRouter } = require("./Route/Support");
+const { WishlistRouter } = require("./Route/Wishlist");
+const socketMiddleware = require("./MiddleWare/socketMiddleware");
 
 const cron = require("node-cron");
 const axios = require("axios");
@@ -45,6 +47,7 @@ app.use(mongosantize());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(socketMiddleware);
 
 //--------------- Route Middleware ------------------//
 
@@ -62,6 +65,7 @@ app.use("/api/v1/Coupon", CouponRouter);
 app.use("/api/v1/Notification", NotificationRouter);
 app.use("/api/v1/Payout", PayoutRouter);
 app.use("/api/v1/Support", SupportRouter);
+app.use("/api/v1/Wishlist", WishlistRouter);
 
 //--------------Not Found Route-------------------//
 app.get("*", (req, res, next) => {
