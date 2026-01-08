@@ -8,38 +8,109 @@ const redis = require("../Services/redis");
  * - Redis: counts + trending
  * - Socket.IO: realtime sync
  */
+// const toggleWishlist = async (req, res, next) => {
+//   try {
+//     const { propertyId, propertyType ,userId} = req.body;
+
+//     if (!propertyId || !propertyType) {
+//       return next(new AppErr("PropertyId and PropertyType are required", 400));
+//     }
+
+//     const redisCountKey = `wishlist:count:${propertyType}:${propertyId}`;
+//     const redisTrendingKey = "wishlist:trending";
+//     const socketRoom = `user:${userId}`;
+
+//     const existing = await Wishlist.findOne({
+//       userId,
+//       propertyId,
+//       propertyType,
+//       deletedAt: null,
+//     });
+
+//     /**
+//      * ❤️ REMOVE FROM WISHLIST
+//      */
+//     if (existing) {
+//       existing.deletedAt = new Date();
+//       await existing.save();
+
+//       // Redis updates
+//       await redis.decr(redisCountKey);
+//       await redis.zincrby(redisTrendingKey, -1, `${propertyType}:${propertyId}`);
+
+//       // Socket sync (multi-device)
+//       req.io?.to(socketRoom).emit("wishlist:update", {
+//         propertyId,
+//         propertyType,
+//         wished: false,
+//       });
+
+//       return res.status(200).json({
+//         success: true,
+//         wished: false,
+//         message: "Removed from wishlist",
+//       });
+//     }
+
+//     /**
+//      * ❤️ ADD TO WISHLIST
+//      */
+//     await Wishlist.create({
+//       userId,
+//       propertyId,
+//       propertyType,
+//     });
+
+//     // Redis updates
+//     await redis.incr(redisCountKey);
+//     await redis.zincrby(redisTrendingKey, 1, `${propertyType}:${propertyId}`);
+
+//     // Socket sync
+//     req.io?.to(socketRoom).emit("wishlist:update", {
+//       propertyId,
+//       propertyType,
+//       wished: true,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       wished: true,
+//       message: "Added to wishlist",
+//     });
+//   } catch (err) {
+//     console.error("Toggle wishlist error:", err);
+//     next(new AppErr("Failed to update wishlist", 500));
+//   }
+// };
 const toggleWishlist = async (req, res, next) => {
   try {
-    const userId = req.user._id; // from auth middleware
-    const { propertyId, propertyType } = req.body;
+    const { propertyId, propertyType, userId } = req.body;
 
-    if (!propertyId || !propertyType) {
-      return next(new AppErr("PropertyId and PropertyType are required", 400));
+    if (!propertyId || !propertyType || !userId) {
+      return next(new AppErr("Missing required fields", 400));
     }
 
     const redisCountKey = `wishlist:count:${propertyType}:${propertyId}`;
     const redisTrendingKey = "wishlist:trending";
     const socketRoom = `user:${userId}`;
 
-    const existing = await Wishlist.findOne({
+    // 🔍 Find ANY record (deleted or not)
+    const wishlist = await Wishlist.findOne({
       userId,
       propertyId,
       propertyType,
-      deletedAt: null,
     });
 
     /**
-     * ❤️ REMOVE FROM WISHLIST
+     * ❤️ REMOVE
      */
-    if (existing) {
-      existing.deletedAt = new Date();
-      await existing.save();
+    if (wishlist && wishlist.deletedAt === null) {
+      wishlist.deletedAt = new Date();
+      await wishlist.save();
 
-      // Redis updates
       await redis.decr(redisCountKey);
       await redis.zincrby(redisTrendingKey, -1, `${propertyType}:${propertyId}`);
 
-      // Socket sync (multi-device)
       req.io?.to(socketRoom).emit("wishlist:update", {
         propertyId,
         propertyType,
@@ -54,19 +125,24 @@ const toggleWishlist = async (req, res, next) => {
     }
 
     /**
-     * ❤️ ADD TO WISHLIST
+     * ❤️ ADD (REVIVE OR CREATE)
      */
-    await Wishlist.create({
-      userId,
-      propertyId,
-      propertyType,
-    });
+    if (wishlist) {
+      // ♻️ revive
+      wishlist.deletedAt = null;
+      await wishlist.save();
+    } else {
+      // 🆕 new
+      await Wishlist.create({
+        userId,
+        propertyId,
+        propertyType,
+      });
+    }
 
-    // Redis updates
     await redis.incr(redisCountKey);
     await redis.zincrby(redisTrendingKey, 1, `${propertyType}:${propertyId}`);
 
-    // Socket sync
     req.io?.to(socketRoom).emit("wishlist:update", {
       propertyId,
       propertyType,
@@ -112,7 +188,7 @@ const getMyWishlist = async (req, res, next) => {
  */
 const getWishlistIds = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = "6833656360ed0e90157dd2e1";
 
     const wishlist = await Wishlist.find(
       { userId, deletedAt: null },

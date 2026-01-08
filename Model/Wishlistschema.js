@@ -19,14 +19,24 @@ const WishlistSchema = new mongoose.Schema(
       enum: ["villa", "hotel", "cottage", "camping"],
       required: true,
     },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// Prevent duplicates
+// prevent duplicate ACTIVE wishlist only
 WishlistSchema.index(
   { userId: 1, propertyId: 1, propertyType: 1 },
-  { unique: true }
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null },
+  }
 );
+
 
 module.exports = mongoose.model("Wishlist", WishlistSchema);

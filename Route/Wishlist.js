@@ -12,7 +12,7 @@ const WishlistRouter = express.Router();
 
 WishlistRouter.post("/wishlist/toggle", socketMiddleware, toggleWishlist);
 WishlistRouter.get("/wishlist", getMyWishlist);
-WishlistRouter.get("/wishlist/ids", getWishlistIds);
+WishlistRouter.get("/wishlist/ids/:userId", getWishlistIds);
 WishlistRouter.delete(
   "/wishlist/:propertyType/:propertyId",
   removeFromWishlist
