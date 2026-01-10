@@ -901,6 +901,11 @@ const getAvailableProperties = async (req, res, next) => {
           (p) => Array.isArray(p.tags) && p.tags.includes("featured")
         );
         break;
+      case "trending":
+        properties = properties.filter(
+          (p) => Array.isArray(p.tags) && p.tags.includes("trending")
+        );
+        break;
 
       case "new":
         properties.sort(
