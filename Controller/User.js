@@ -118,6 +118,533 @@ const isDateOverlap = (bookings, checkIn, checkOut) => {
   });
 };
 
+const isWeekendInRange = (checkIn, checkOut) => {
+  let start = moment.utc(checkIn).tz("Asia/Kolkata").startOf("day");
+  let end = moment.utc(checkOut).tz("Asia/Kolkata").startOf("day");
+
+  let current = start.clone();
+
+  while (current.isBefore(end)) {
+    const day = current.day(); // 0 = Sunday, 6 = Saturday
+
+    if (day === 0 || day === 6) {
+      return true;
+    }
+
+    current.add(1, "day");
+  }
+
+  return false;
+};
+
+// const getAvailableProperties = async (req, res, next) => {
+//   try {
+//     const {
+//       categoryId,
+//       checkIn,
+//       checkOut,
+//       subtype,
+//       sortBy,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     if (!categoryId || !checkIn || !checkOut) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "categoryId, checkIn, and checkOut are required",
+//       });
+//     }
+
+//     // ✅ Find category to determine type
+//     const category = await Category.findById(categoryId);
+//     if (!category) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Category not found",
+//       });
+//     }
+
+//     const type = category.name; // Villa, Hotel, Cottage, Camping
+//     let properties = [];
+
+//     switch (type) {
+//       case "Villa":
+//         properties = await Villa.find({
+//           category: categoryId,
+//           isapproved: "approved",
+//           isLive: true,
+//           deletedAt: null,
+//         });
+//         // filter out booked villas
+//         properties = properties.filter(
+//           (villa) => !isDateOverlap(villa.bookedDates, checkIn, checkOut)
+//         );
+
+//         // ✅ subtype filter for villa (like 2BHK, 3BHK)
+//         if (subtype) {
+//           properties = properties.filter((villa) => villa.bhkType === subtype);
+//         }
+//         break;
+
+//       case "Hotel":
+//         const rooms = await Room.find({
+//           deletedAt: null,
+//           status: "available",
+//           ...(subtype ? { roomType: subtype } : {}), // ✅ filter at query level
+//         }).populate({
+//           path: "hotel",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const hotelMap = {};
+//         rooms.forEach((room) => {
+//           if (
+//             room.hotel &&
+//             !isDateOverlap(room.bookedDates, checkIn, checkOut)
+//           ) {
+//             const hotelId = room.hotel._id.toString();
+//             if (!hotelMap[hotelId]) {
+//               hotelMap[hotelId] = {
+//                 ...room.hotel.toObject(),
+//                 rooms: [],
+//               };
+//             }
+//             hotelMap[hotelId].rooms.push({
+//               _id: room._id,
+//               subtype: room.roomType,
+//               totalRooms: room.totalRooms,
+//               minCapacity: room.minCapacity,
+//               maxCapacity: room.maxCapacity,
+//               pricePerNight: room.pricePerNight,
+//               amenities: room.amenities,
+//               images: room.roomImages,
+//             });
+//           }
+//         });
+//         properties = Object.values(hotelMap);
+//         break;
+
+//       case "Cottage":
+//         const cottages = await CottageUnit.find({
+//           deletedAt: null,
+//           ...(subtype ? { cottageType: subtype } : {}),
+//         }).populate({
+//           path: "Cottages",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const cottageMap = {};
+
+//         cottages.forEach((unit) => {
+//           if (!unit.Cottages) return;
+
+//           const cottageId = unit.Cottages._id.toString();
+
+//           if (!cottageMap[cottageId]) {
+//             cottageMap[cottageId] = {
+//               ...unit.Cottages.toObject(),
+//               units: [],
+//             };
+//           }
+
+//           cottageMap[cottageId].units.push({
+//             _id: unit._id,
+//             subtype: unit.cottageType,
+//             totalUnits: unit.totalcottage,
+//             minCapacity: unit.minCapacity,
+//             maxCapacity: unit.maxCapacity,
+//             pricing: unit.pricing,
+//             amenities: unit.amenities,
+//             images: unit.cottageimages,
+//             status: unit.status,
+//           });
+//         });
+
+//         properties = Object.values(cottageMap);
+//         break;
+
+//       case "Camping":
+//         const tents = await Tent.find({
+//           deletedAt: null,
+//           status: "available",
+//           ...(subtype ? { tentType: subtype } : {}), // ✅ filter at query level
+//         }).populate({
+//           path: "camping",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const campingMap = {};
+//         tents.forEach((tent) => {
+//           if (
+//             tent.camping &&
+//             !isDateOverlap(tent.bookedDates, checkIn, checkOut)
+//           ) {
+//             const campId = tent.camping._id.toString();
+//             if (!campingMap[campId]) {
+//               campingMap[campId] = {
+//                 ...tent.camping.toObject(),
+//                 tents: [],
+//               };
+//             }
+//             campingMap[campId].tents.push({
+//               _id: tent._id,
+//               subtype: tent.tentType,
+//               totalTents: tent.totaltents,
+//               minCapacity: tent.minCapacity,
+//               maxCapacity: tent.maxCapacity,
+//               pricePerNight: tent.pricePerNight,
+//               amenities: tent.amenities,
+//               images: tent.tentimages,
+//             });
+//           }
+//         });
+//         properties = Object.values(campingMap);
+//         break;
+
+//       default:
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid property type",
+//         });
+//     }
+
+//     // ✅ Pagination
+//     const totalProperties = properties.length;
+//     const pageNumber = Number(page);
+//     const limitNumber = Number(limit);
+//     const totalPages = Math.ceil(totalProperties / limitNumber);
+
+//     const paginatedProperties = properties.slice(
+//       (pageNumber - 1) * limitNumber,
+//       pageNumber * limitNumber
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       data: paginatedProperties,
+//       pagination: {
+//         total: totalProperties,
+//         page: pageNumber,
+//         limit: limitNumber,
+//         totalPages,
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     next(error);
+//   }
+// };
+
+// const getAvailableProperties = async (req, res, next) => {
+//   try {
+//     const {
+//       categoryId,
+//       checkIn,
+//       checkOut,
+//       subtype,
+//       sortBy = "popular",
+//       priceMin,
+//       priceMax,
+//       search,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     if (!categoryId || !checkIn || !checkOut) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "categoryId, checkIn, and checkOut are required",
+//       });
+//     }
+
+//     const category = await Category.findById(categoryId);
+//     if (!category) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Category not found",
+//       });
+//     }
+
+//     const type = category.name; // Villa | Hotel | Cottage | Camping
+//     let properties = [];
+
+//     /* =========================
+//        FETCH PROPERTIES
+//     ========================== */
+
+//     switch (type) {
+//       case "Villa": {
+//         properties = await Villa.find({
+//           category: categoryId,
+//           isapproved: "approved",
+//           isLive: true,
+//           deletedAt: null,
+//         });
+
+//         properties = properties.filter(
+//           (villa) => !isDateOverlap(villa.bookedDates, checkIn, checkOut)
+//         );
+
+//         if (subtype) {
+//           properties = properties.filter(
+//             (villa) => villa.bhkType === subtype
+//           );
+//         }
+//         break;
+//       }
+
+//       case "Hotel": {
+//         const rooms = await Room.find({
+//           deletedAt: null,
+//           status: "available",
+//           ...(subtype ? { roomType: subtype } : {}),
+//         }).populate({
+//           path: "hotel",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const hotelMap = {};
+
+//         rooms.forEach((room) => {
+//           if (
+//             room.hotel &&
+//             !isDateOverlap(room.bookedDates, checkIn, checkOut)
+//           ) {
+//             const hotelId = room.hotel._id.toString();
+
+//             if (!hotelMap[hotelId]) {
+//               hotelMap[hotelId] = {
+//                 ...room.hotel.toObject(),
+//                 rooms: [],
+//               };
+//             }
+
+//             hotelMap[hotelId].rooms.push({
+//               _id: room._id,
+//               subtype: room.roomType,
+//               totalRooms: room.totalRooms,
+//               minCapacity: room.minCapacity,
+//               maxCapacity: room.maxCapacity,
+//               amenities: room.amenities,
+//               images: room.roomImages,
+//             });
+//           }
+//         });
+
+//         properties = Object.values(hotelMap);
+//         break;
+//       }
+
+//       case "Cottage": {
+//         const units = await CottageUnit.find({
+//           deletedAt: null,
+//           ...(subtype ? { cottageType: subtype } : {}),
+//         }).populate({
+//           path: "Cottages",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const cottageMap = {};
+
+//         units.forEach((unit) => {
+//           if (!unit.Cottages) return;
+
+//           const cottageId = unit.Cottages._id.toString();
+
+//           if (!cottageMap[cottageId]) {
+//             cottageMap[cottageId] = {
+//               ...unit.Cottages.toObject(),
+//               units: [],
+//             };
+//           }
+
+//           cottageMap[cottageId].units.push({
+//             _id: unit._id,
+//             subtype: unit.cottageType,
+//             totalUnits: unit.totalcottage,
+//             minCapacity: unit.minCapacity,
+//             maxCapacity: unit.maxCapacity,
+//             amenities: unit.amenities,
+//             images: unit.cottageimages,
+//             status: unit.status,
+//           });
+//         });
+
+//         properties = Object.values(cottageMap);
+//         break;
+//       }
+
+//       case "Camping": {
+//         const tents = await Tent.find({
+//           deletedAt: null,
+//           status: "available",
+//           ...(subtype ? { tentType: subtype } : {}),
+//         }).populate({
+//           path: "camping",
+//           match: {
+//             category: categoryId,
+//             isapproved: "approved",
+//             isLive: true,
+//             deletedAt: null,
+//           },
+//         });
+
+//         const campingMap = {};
+
+//         tents.forEach((tent) => {
+//           if (
+//             tent.camping &&
+//             !isDateOverlap(tent.bookedDates, checkIn, checkOut)
+//           ) {
+//             const campId = tent.camping._id.toString();
+
+//             if (!campingMap[campId]) {
+//               campingMap[campId] = {
+//                 ...tent.camping.toObject(),
+//                 tents: [],
+//               };
+//             }
+
+//             campingMap[campId].tents.push({
+//               _id: tent._id,
+//               subtype: tent.tentType,
+//               totalTents: tent.totaltents,
+//               minCapacity: tent.minCapacity,
+//               maxCapacity: tent.maxCapacity,
+//               amenities: tent.amenities,
+//               images: tent.tentimages,
+//             });
+//           }
+//         });
+
+//         properties = Object.values(campingMap);
+//         break;
+//       }
+
+//       default:
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid property type",
+//         });
+//     }
+
+//     /* =========================
+//        SEARCH FILTER
+//     ========================== */
+//     if (search) {
+//       const regex = new RegExp(search, "i");
+
+//       properties = properties.filter((property) =>
+//         regex.test(property.name || "")
+//       );
+//     }
+
+//     /* =========================
+//        PRICE RANGE FILTER
+//        (COMMON pricing OBJECT)
+//     ========================== */
+//     if (priceMin || priceMax) {
+//       const min = Number(priceMin) || 0;
+//       const max = Number(priceMax) || Infinity;
+
+//       properties = properties.filter((property) => {
+//         const price = property.pricing?.weekdayPrice;
+//         if (typeof price !== "number") return false;
+//         return price >= min && price <= max;
+//       });
+//     }
+
+//     /* =========================
+//        SORTING
+//     ========================== */
+//     switch (sortBy) {
+//       case "low-high":
+//         properties.sort(
+//           (a, b) =>
+//             (a.pricing?.weekdayPrice || 0) -
+//             (b.pricing?.weekdayPrice || 0)
+//         );
+//         break;
+
+//       case "high-low":
+//         properties.sort(
+//           (a, b) =>
+//             (b.pricing?.weekdayPrice || 0) -
+//             (a.pricing?.weekdayPrice || 0)
+//         );
+//         break;
+
+//       case "rating":
+//         properties.sort(
+//           (a, b) =>
+//             (b.averageRating || 0) -
+//             (a.averageRating || 0)
+//         );
+//         break;
+
+//       case "popular":
+//       default:
+//         properties.sort(
+//           (a, b) =>
+//             (Array.isArray(b.tags) && b.tags.includes("popular") ? 1 : 0) -
+//             (Array.isArray(a.tags) && a.tags.includes("popular") ? 1 : 0)
+//         );
+//     }
+
+//     /* =========================
+//        PAGINATION
+//     ========================== */
+//     const total = properties.length;
+//     const pageNumber = Number(page);
+//     const limitNumber = Number(limit);
+
+//     const paginated = properties.slice(
+//       (pageNumber - 1) * limitNumber,
+//       pageNumber * limitNumber
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       data: paginated,
+//       pagination: {
+//         total,
+//         page: pageNumber,
+//         limit: limitNumber,
+//         totalPages: Math.ceil(total / limitNumber),
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     next(error);
+//   }
+// };
+
 const getAvailableProperties = async (req, res, next) => {
   try {
     const {
@@ -125,6 +652,10 @@ const getAvailableProperties = async (req, res, next) => {
       checkIn,
       checkOut,
       subtype,
+      sortBy = "popular",
+      priceMin,
+      priceMax,
+      search,
       page = 1,
       limit = 10,
     } = req.query;
@@ -136,7 +667,6 @@ const getAvailableProperties = async (req, res, next) => {
       });
     }
 
-    // ✅ Find category to determine type
     const category = await Category.findById(categoryId);
     if (!category) {
       return res.status(404).json({
@@ -145,33 +675,42 @@ const getAvailableProperties = async (req, res, next) => {
       });
     }
 
-    const type = category.name; // Villa, Hotel, Cottage, Camping
+    const type = category.name; // Villa | Hotel | Cottage | Camping
     let properties = [];
 
+    /* =========================
+       WEEKEND DECISION (IST)
+    ========================== */
+    const isWeekend = isWeekendInRange(checkIn, checkOut);
+    const priceKey = isWeekend ? "weekendPrice" : "weekdayPrice";
+
+    /* =========================
+       FETCH PROPERTIES
+    ========================== */
     switch (type) {
-      case "Villa":
+      case "Villa": {
         properties = await Villa.find({
           category: categoryId,
           isapproved: "approved",
           isLive: true,
           deletedAt: null,
         });
-        // filter out booked villas
+
         properties = properties.filter(
           (villa) => !isDateOverlap(villa.bookedDates, checkIn, checkOut)
         );
 
-        // ✅ subtype filter for villa (like 2BHK, 3BHK)
         if (subtype) {
           properties = properties.filter((villa) => villa.bhkType === subtype);
         }
         break;
+      }
 
-      case "Hotel":
+      case "Hotel": {
         const rooms = await Room.find({
           deletedAt: null,
           status: "available",
-          ...(subtype ? { roomType: subtype } : {}), // ✅ filter at query level
+          ...(subtype ? { roomType: subtype } : {}),
         }).populate({
           path: "hotel",
           match: {
@@ -183,35 +722,39 @@ const getAvailableProperties = async (req, res, next) => {
         });
 
         const hotelMap = {};
+
         rooms.forEach((room) => {
           if (
             room.hotel &&
             !isDateOverlap(room.bookedDates, checkIn, checkOut)
           ) {
             const hotelId = room.hotel._id.toString();
+
             if (!hotelMap[hotelId]) {
               hotelMap[hotelId] = {
                 ...room.hotel.toObject(),
                 rooms: [],
               };
             }
+
             hotelMap[hotelId].rooms.push({
               _id: room._id,
               subtype: room.roomType,
               totalRooms: room.totalRooms,
               minCapacity: room.minCapacity,
               maxCapacity: room.maxCapacity,
-              pricePerNight: room.pricePerNight,
               amenities: room.amenities,
               images: room.roomImages,
             });
           }
         });
+
         properties = Object.values(hotelMap);
         break;
+      }
 
-      case "Cottage":
-        const cottages = await CottageUnit.find({
+      case "Cottage": {
+        const units = await CottageUnit.find({
           deletedAt: null,
           ...(subtype ? { cottageType: subtype } : {}),
         }).populate({
@@ -226,7 +769,7 @@ const getAvailableProperties = async (req, res, next) => {
 
         const cottageMap = {};
 
-        cottages.forEach((unit) => {
+        units.forEach((unit) => {
           if (!unit.Cottages) return;
 
           const cottageId = unit.Cottages._id.toString();
@@ -244,7 +787,6 @@ const getAvailableProperties = async (req, res, next) => {
             totalUnits: unit.totalcottage,
             minCapacity: unit.minCapacity,
             maxCapacity: unit.maxCapacity,
-            pricing: unit.pricing,
             amenities: unit.amenities,
             images: unit.cottageimages,
             status: unit.status,
@@ -253,12 +795,13 @@ const getAvailableProperties = async (req, res, next) => {
 
         properties = Object.values(cottageMap);
         break;
+      }
 
-      case "Camping":
+      case "Camping": {
         const tents = await Tent.find({
           deletedAt: null,
           status: "available",
-          ...(subtype ? { tentType: subtype } : {}), // ✅ filter at query level
+          ...(subtype ? { tentType: subtype } : {}),
         }).populate({
           path: "camping",
           match: {
@@ -270,32 +813,36 @@ const getAvailableProperties = async (req, res, next) => {
         });
 
         const campingMap = {};
+
         tents.forEach((tent) => {
           if (
             tent.camping &&
             !isDateOverlap(tent.bookedDates, checkIn, checkOut)
           ) {
             const campId = tent.camping._id.toString();
+
             if (!campingMap[campId]) {
               campingMap[campId] = {
                 ...tent.camping.toObject(),
                 tents: [],
               };
             }
+
             campingMap[campId].tents.push({
               _id: tent._id,
               subtype: tent.tentType,
               totalTents: tent.totaltents,
               minCapacity: tent.minCapacity,
               maxCapacity: tent.maxCapacity,
-              pricePerNight: tent.pricePerNight,
               amenities: tent.amenities,
               images: tent.tentimages,
             });
           }
         });
+
         properties = Object.values(campingMap);
         break;
+      }
 
       default:
         return res.status(400).json({
@@ -304,25 +851,100 @@ const getAvailableProperties = async (req, res, next) => {
         });
     }
 
-    // ✅ Pagination
-    const totalProperties = properties.length;
+    /* =========================
+       SEARCH FILTER
+    ========================== */
+    if (search) {
+      const regex = new RegExp(search, "i");
+      properties = properties.filter((p) => regex.test(p.name || ""));
+    }
+
+    /* =========================
+       PRICE RANGE FILTER
+       (COMMON pricing object)
+    ========================== */
+    if (priceMin || priceMax) {
+      const min = Number(priceMin) || 0;
+      const max = Number(priceMax) || Infinity;
+
+      properties = properties.filter((p) => {
+        const price = p.pricing?.[priceKey];
+        if (typeof price !== "number") return false;
+        return price >= min && price <= max;
+      });
+    }
+
+    /* =========================
+       SORTING
+    ========================== */
+    switch (sortBy) {
+      case "low-high":
+        properties.sort(
+          (a, b) => (a.pricing?.[priceKey] || 0) - (b.pricing?.[priceKey] || 0)
+        );
+        break;
+
+      case "high-low":
+        properties.sort(
+          (a, b) => (b.pricing?.[priceKey] || 0) - (a.pricing?.[priceKey] || 0)
+        );
+        break;
+
+      case "rating":
+        properties.sort(
+          (a, b) => (b.averageRating || 0) - (a.averageRating || 0)
+        );
+        break;
+
+      case "featured":
+        properties = properties.filter(
+          (p) => Array.isArray(p.tags) && p.tags.includes("featured")
+        );
+        break;
+
+      case "new":
+        properties.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        break;
+
+      case "pool":
+        properties = properties.filter(
+          (p) =>
+            Array.isArray(p.amenities) &&
+            p.amenities.map((a) => a.toLowerCase()).includes("Swimming Pool")
+        );
+        break;
+
+      case "popular":
+      default:
+        properties.sort(
+          (a, b) =>
+            (Array.isArray(b.tags) && b.tags.includes("popular") ? 1 : 0) -
+            (Array.isArray(a.tags) && a.tags.includes("popular") ? 1 : 0)
+        );
+    }
+
+    /* =========================
+       PAGINATION
+    ========================== */
+    const total = properties.length;
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
-    const totalPages = Math.ceil(totalProperties / limitNumber);
 
-    const paginatedProperties = properties.slice(
+    const paginated = properties.slice(
       (pageNumber - 1) * limitNumber,
       pageNumber * limitNumber
     );
 
     res.status(200).json({
       success: true,
-      data: paginatedProperties,
+      data: paginated,
       pagination: {
-        total: totalProperties,
+        total,
         page: pageNumber,
         limit: limitNumber,
-        totalPages,
+        totalPages: Math.ceil(total / limitNumber),
       },
     });
   } catch (error) {
@@ -913,7 +1535,6 @@ const getReviewHighlights = async (req, res, next) => {
 };
 
 const LIMIT_DEFAULTT = 10;
-
 
 const getReels = async (req, res) => {
   const { cursor, limit = LIMIT_DEFAULTT } = req.query;
