@@ -912,7 +912,7 @@ const getAvailableProperties = async (req, res, next) => {
         properties = properties.filter(
           (p) =>
             Array.isArray(p.amenities) &&
-            p.amenities.map((a) => a.toLowerCase()).includes("Swimming Pool")
+            p.amenities.map((a) => a.toLowerCase()).includes("swimming pool")
         );
         break;
 
