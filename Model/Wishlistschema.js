@@ -11,12 +11,13 @@ const WishlistSchema = new mongoose.Schema(
 
     propertyId: {
       type: mongoose.Schema.Types.ObjectId,
+      refPath: "propertyType",
       required: true,
     },
 
     propertyType: {
       type: String,
-      enum: ["villa", "hotel", "cottage", "camping"],
+      enum: ["Villa", "hotel", "cottage", "camping"],
       required: true,
     },
 
@@ -37,6 +38,5 @@ WishlistSchema.index(
     partialFilterExpression: { deletedAt: null },
   }
 );
-
 
 module.exports = mongoose.model("Wishlist", WishlistSchema);

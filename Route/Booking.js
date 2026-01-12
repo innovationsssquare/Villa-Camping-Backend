@@ -12,7 +12,9 @@ const {
   createOfflineCampingBooking,
   createOfflineCottageBooking,
   createOfflineHotelBooking,
-  addReview
+  addReview,
+  getAllBookings,
+  getAllBookingsAdmin
 } = require("../Controller/Booking");
 
 const BookingRouter = express.Router();
@@ -25,6 +27,7 @@ BookingRouter.post("/Hoteloffline", createOfflineHotelBooking);
 
 BookingRouter.post("/verify", verifyPaymentAndConfirm);
 
+BookingRouter.get("/admin", getAllBookingsAdmin);
 BookingRouter.get("/:id", getBookingById);
 BookingRouter.get("/customer/:customerId", getBookingsByCustomer);
 BookingRouter.get("/owner/:ownerId", getBookingsByOwner);

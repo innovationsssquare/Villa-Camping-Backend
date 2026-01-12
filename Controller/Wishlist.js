@@ -165,12 +165,19 @@ const toggleWishlist = async (req, res, next) => {
  */
 const getMyWishlist = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = "6833656360ed0e90157dd2e1";
 
-    const wishlist = await Wishlist.find({
+       const wishlist = await Wishlist.find({
       userId,
       deletedAt: null,
-    }).sort({ createdAt: -1 });
+    })
+      .populate({
+        path: "propertyId",
+         select: "name images pricing address",
+        match: { deletedAt: null }, 
+      })
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,

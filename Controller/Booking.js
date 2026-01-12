@@ -2709,6 +2709,96 @@ const addReview = async (req, res, next) => {
   }
 };
 
+// Get all bookings (ADMIN)
+// ADMIN – Get ALL bookings
+const getAllBookingsAdmin = async (req, res, next) => {
+  try {
+    const {
+      status,
+      paymentStatus,
+      propertyType,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    const query = {};
+
+    if (status) query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
+    if (propertyType) query.propertyType = propertyType;
+
+    if (startDate && endDate) {
+      query.checkIn = { $gte: new Date(startDate) };
+      query.checkOut = { $lte: new Date(endDate) };
+    } else if (startDate) {
+      query.checkIn = { $gte: new Date(startDate) };
+    } else if (endDate) {
+      query.checkOut = { $lte: new Date(endDate) };
+    }
+
+    const currentPage = Number(page);
+    const perPage = Number(limit);
+    const skip = (currentPage - 1) * perPage;
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query)
+        .populate("ownerId", "name email")
+        .populate("customerId", "name email mobile")
+        .populate("payoutId", "payoutStatus financials")
+        .populate("coupon.couponId", "code title type")
+        .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+        .skip(skip)
+        .limit(perPage)
+        .lean(),
+      Booking.countDocuments(query),
+    ]);
+
+    const propertyModelMap = {
+      villa: Villa,
+      camping: Camping,
+      cottages: Cottages,
+      hotel: Hotels,
+    };
+
+    const populatedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        const Model = propertyModelMap[booking.propertyType];
+        if (!Model || !booking.propertyId) return booking;
+
+        const property = await Model.findById(booking.propertyId)
+          .select("name location images")
+          .lean();
+
+        return {
+          ...booking,
+          property,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: populatedBookings,
+      pagination: {
+        total,
+        page: currentPage,
+        totalPages: Math.ceil(total / perPage),
+        limit: perPage,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    next(new AppErr("Failed to fetch all bookings", 500));
+  }
+};
+
+
+
+
 module.exports = {
   createBooking,
   verifyPaymentAndConfirm,
@@ -2726,4 +2816,5 @@ module.exports = {
   createOfflineCottageBooking,
   createOfflineHotelBooking,
   addReview,
+  getAllBookingsAdmin
 };
